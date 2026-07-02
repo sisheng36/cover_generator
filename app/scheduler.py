@@ -10,7 +10,8 @@ logger = logging.getLogger(__name__)
 
 _scheduler: BackgroundScheduler = None
 _job_id = "cover_generator_scheduled"
-_job_lock = threading.Lock()
+# 必须是 RLock: start() 持锁时会调用 stop(),stop() 内部也要拿锁,普通 Lock 会自死锁
+_job_lock = threading.RLock()
 
 
 def start(config: dict, job_func):
