@@ -110,13 +110,22 @@ async def list_libraries():
 
 @app.post("/api/libraries/generate")
 async def generate_libraries(request: Request):
-    body = await request.json()
+    try:
+        body = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False, "message": "请求体不是合法 JSON"}, status_code=400)
+
     library_ids = body.get("library_ids", [])
     if not library_ids:
         return JSONResponse({"ok": False, "message": "请选择媒体库"}, status_code=400)
 
-    client = _new_client()
-    all_libs = client.get_libraries()
+    try:
+        client = _new_client()
+        all_libs = client.get_libraries()
+    except Exception as e:
+        logger.exception("创建 Emby 客户端或获取媒体库失败")
+        return JSONResponse({"ok": False, "message": f"连接 Emby 失败: {e}"}, status_code=502)
+
     selected = [lib for lib in all_libs if lib.get("Id") in library_ids]
 
     if not selected:
@@ -124,7 +133,11 @@ async def generate_libraries(request: Request):
 
     results = []
     for lib in selected:
-        result = generate_cover_for_library(client, lib, app_config)
+        try:
+            result = generate_cover_for_library(client, lib, app_config)
+        except Exception as e:
+            logger.exception(f"为 {lib.get('Name')} 生成封面时抛异常")
+            result = {"ok": False, "message": f"内部异常: {e}"}
         results.append({"library": lib["Name"], **result})
         logger.info(f"[{lib['Name']}] {result['message']}")
 

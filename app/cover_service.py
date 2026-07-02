@@ -43,13 +43,23 @@ def generate_cover_for_library(
 ) -> Dict:
     library_id = library.get("Id") or library.get("ItemId")
     library_name = library.get("Name", "Unknown")
-    sort_by = config.get("sort_by", "Random")
-    style = config.get("cover_style", "single_1")
-    use_primary = config.get("use_primary", False)
-    blur_size = int(config.get("blur_size", 50))
-    color_ratio = float(config.get("color_ratio", 0.8))
-    zh_font_size = float(config.get("zh_font_size", 1.0))
-    en_font_size = float(config.get("en_font_size", 1.0))
+    sort_by = config.get("sort_by") or "Random"
+    style = config.get("cover_style") or "single_1"
+    use_primary = bool(config.get("use_primary", False))
+
+    def _num(value, default):
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            try:
+                return float(value)
+            except (TypeError, ValueError):
+                return default
+
+    blur_size = int(_num(config.get("blur_size"), 50))
+    color_ratio = float(_num(config.get("color_ratio"), 0.8))
+    zh_font_size = float(_num(config.get("zh_font_size"), 1.0))
+    en_font_size = float(_num(config.get("en_font_size"), 1.0))
 
     item_count = config.get("show_item_count", False)
     badge_config = None

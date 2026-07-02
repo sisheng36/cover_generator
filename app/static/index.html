@@ -284,7 +284,8 @@ const sel=document.getElementById(selId);
 if(sel)cfg[selId]=Array.from(sel.selectedOptions).map(o=>o.value);
 }
 for(const k of['blur_size','color_ratio','zh_font_size','en_font_size','aggregate_time']){
-if(cfg[k]!=='')cfg[k]=Number(cfg[k]);
+if(cfg[k]===''||cfg[k]==null)delete cfg[k];
+else cfg[k]=Number(cfg[k]);
 }
 try{
 const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)});
@@ -412,7 +413,13 @@ method:'POST',
 headers:{'Content-Type':'application/json'},
 body:JSON.stringify({library_ids:ids}),
 });
-const data=await r.json();
+const text=await r.text();
+let data;
+try{data=JSON.parse(text)}
+catch(parseErr){
+showStatus(`请求失败: HTTP ${r.status}，响应不是 JSON。原文前200字符: ${text.slice(0,200)}`,'error');
+return;
+}
 if(data.ok){
 const resultsEl=document.getElementById('generateResults');
 let html='<div style="margin-top:12px"><h3 style="font-size:15px;margin-bottom:8px">生成结果</h3>';
