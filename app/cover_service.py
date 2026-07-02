@@ -111,12 +111,7 @@ def _local_poster_candidates(item: Dict) -> list[Path]:
         return []
 
     item_path = Path(item_path_raw)
-    search_dirs = []
-
-    if item_path.is_dir():
-        search_dirs.extend([item_path, item_path.parent, item_path.parent.parent])
-    else:
-        search_dirs.extend([item_path.parent, item_path.parent.parent, item_path.parent.parent.parent])
+    search_dirs = [item_path] if item_path.is_dir() else [item_path.parent]
 
     seen = set()
     candidates: list[Path] = []
@@ -157,7 +152,18 @@ def _resolve_item_types(library: Dict) -> Optional[str]:
         return "Movie"
     if collection_type == "tvshows":
         return "Series"
+    if collection_type == "music":
+        return "MusicAlbum,Audio"
+    if not collection_type:
+        return "Movie,Series"
     return None
+
+
+def _allowed_item_type_set(library: Dict) -> Optional[set[str]]:
+    item_types = _resolve_item_types(library)
+    if not item_types:
+        return None
+    return {item_type.strip() for item_type in item_types.split(",") if item_type.strip()}
 
 
 def _logical_item_key(item: Dict) -> str:
@@ -191,6 +197,7 @@ def _collect_candidate_items(
     sort_by: str,
 ) -> list[tuple[Dict, Optional[str]]]:
     item_types = _resolve_item_types(library)
+    allowed_item_types = _allowed_item_type_set(library)
     page_size = max(required * 4, 50)
     max_scan = max(required * 30, 200)
     start_index = 0
@@ -210,6 +217,10 @@ def _collect_candidate_items(
             break
 
         for item in items:
+            item_type = str(item.get("Type") or "").strip()
+            if allowed_item_types and item_type not in allowed_item_types:
+                continue
+
             has_local_poster = bool(_local_poster_candidates(item))
             img_url = client.get_image_url(item, settings["use_primary"])
             if not (has_local_poster or img_url):
