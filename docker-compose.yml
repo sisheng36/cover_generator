@@ -1,0 +1,11 @@
+services:
+  embytool:
+    build: .
+    container_name: embytool
+    ports:
+      - "8055:8055"
+    volumes:
+      - ./data:/data
+    environment:
+      - TZ=Asia/Shanghai
+    restart: unless-stopped
