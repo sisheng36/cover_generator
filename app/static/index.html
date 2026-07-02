@@ -68,6 +68,7 @@ h1 { font-size: 24px; margin-bottom: 24px; color: #1a1a2e; }
   <div class="tab-bar">
     <button class="tab-btn active" onclick="switchTab('config')">服务配置</button>
     <button class="tab-btn" onclick="switchTab('generate')">封面生成</button>
+    <button class="tab-btn" onclick="switchTab('notify')">消息通知</button>
   </div>
 
   <div id="tab-config" class="tab-content active">
@@ -191,6 +192,63 @@ h1 { font-size: 24px; margin-bottom: 24px; color: #1a1a2e; }
       </div>
     </div>
   </div>
+
+  <div id="tab-notify" class="tab-content">
+    <div class="card">
+      <h2>通知设置</h2>
+      <div class="form-group checkbox">
+        <input id="notification_enabled" type="checkbox">
+        <label for="notification_enabled">启用消息通知</label>
+      </div>
+      <div class="form-group">
+        <label>Telegram Bot Token</label>
+        <input id="tg_token" placeholder="123456:ABCdef..." type="password">
+        <div class="hint">从 @BotFather 获取</div>
+      </div>
+      <div class="form-group">
+        <label>Telegram 聊天 ID</label>
+        <input id="tg_chat_id" placeholder="-1001234567890">
+        <div class="hint">群组/频道的 Chat ID</div>
+      </div>
+      <div class="form-group">
+        <label>TMDB API Key</label>
+        <input id="tmdb_api_key" placeholder="your_tmdb_api_key" type="password">
+        <div class="hint">用于获取剧集详情、评分、海报，从 themoviedb.org 申请</div>
+      </div>
+      <div class="form-group">
+        <label>通知事件类型</label>
+        <select id="notify_types" multiple style="height:auto;min-height:120px">
+          <option value="library.new|ItemAdded">新入库</option>
+          <option value="playback.start|media.play|PlaybackStart">开始播放</option>
+          <option value="playback.stop|media.stop|PlaybackStop">停止播放</option>
+          <option value="item.rate">用户标记</option>
+          <option value="user.authenticated">登录成功</option>
+          <option value="user.authenticationfailed">登录失败</option>
+        </select>
+        <div class="hint">按住 Ctrl/Cmd 多选，不选则接收全部</div>
+      </div>
+      <div class="form-group checkbox">
+        <input id="aggregate_enabled" type="checkbox">
+        <label for="aggregate_enabled">启用剧集结入库聚合</label>
+      </div>
+      <div class="form-group">
+        <label>聚合时间窗口（秒）</label>
+        <input id="aggregate_time" type="number" min="5" max="300" placeholder="15">
+      </div>
+      <div class="card" style="background:#f9fafb;margin-top:12px">
+        <h2>Webhook 配置说明</h2>
+        <p style="font-size:13px;color:#666;line-height:1.8">
+          在 Emby/Jellyfin 管理后台设置 Webhook，指向：<br>
+          <code style="background:#eef2ff;padding:2px 8px;border-radius:4px">http://&lt;你的服务器IP&gt;:8055/webhook/emby</code><br><br>
+          触发事件选择：<strong>新添加媒体</strong> / <strong>播放事件</strong> 等<br>
+          格式选择：JSON（默认）
+        </p>
+      </div>
+      <div class="actions">
+        <button class="btn btn-primary" onclick="saveConfig()">保存配置</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -224,6 +282,10 @@ async function loadConfig() {
       show_item_count: 'show_item_count', badge_style: 'badge_style',
       max_safe_rating: 'max_safe_rating', title_config: 'title_config',
       covers_output: 'covers_output',
+      notification_enabled: 'notification_enabled',
+      tg_token: 'tg_token', tg_chat_id: 'tg_chat_id',
+      tmdb_api_key: 'tmdb_api_key',
+      aggregate_enabled: 'aggregate_enabled', aggregate_time: 'aggregate_time',
     };
     for (const [id, key] of Object.entries(map)) {
       const el = document.getElementById(id);
@@ -242,6 +304,8 @@ async function saveConfig() {
     'blur_size', 'color_ratio', 'zh_font_size', 'en_font_size',
     'show_item_count', 'badge_style', 'max_safe_rating', 'title_config',
     'covers_output',
+    'notification_enabled', 'tg_token', 'tg_chat_id', 'tmdb_api_key',
+    'aggregate_enabled', 'aggregate_time',
   ];
   const cfg = {};
   for (const id of fields) {
@@ -249,7 +313,9 @@ async function saveConfig() {
     if (!el) continue;
     cfg[id] = el.type === 'checkbox' ? el.checked : el.value;
   }
-  const numFields = ['blur_size', 'color_ratio', 'zh_font_size', 'en_font_size', 'max_safe_rating'];
+  const sel = document.getElementById('notify_types');
+  cfg['notify_types'] = Array.from(sel.selectedOptions).map(o => o.value);
+  const numFields = ['blur_size', 'color_ratio', 'zh_font_size', 'en_font_size', 'max_safe_rating', 'aggregate_time'];
   for (const k of numFields) {
     if (cfg[k] !== '') cfg[k] = Number(cfg[k]);
   }

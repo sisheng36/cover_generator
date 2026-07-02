@@ -30,6 +30,13 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "title_config": "",
     "covers_output": "/data/covers_output",
     "covers_input": "",
+    "notification_enabled": False,
+    "tg_token": "",
+    "tg_chat_id": "",
+    "tmdb_api_key": "",
+    "notify_types": [],
+    "aggregate_enabled": True,
+    "aggregate_time": 15,
 }
 
 

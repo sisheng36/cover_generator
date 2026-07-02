@@ -11,6 +11,7 @@ from .styles.style_single_1 import create_style_single_1
 from .styles.style_single_2 import create_style_single_2
 from .styles.style_multi_1 import create_style_multi_1
 from .config_manager import load_config, save_config
+from .notifier import handle_webhook
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("EmbyTool")
@@ -141,6 +142,20 @@ async def generate_cover(
 @app.get("/api/health")
 async def health():
     return JSONResponse({"status": "ok"})
+
+
+@app.post("/webhook/emby")
+async def webhook_emby(request: Request):
+    try:
+        data = await request.json()
+    except Exception:
+        return JSONResponse({"ok": False, "message": "invalid JSON"}, status_code=400)
+
+    result = handle_webhook(data, app_config)
+    logger.info(f"Webhook 处理结果: {result}")
+    if result.startswith("ok"):
+        return JSONResponse({"ok": True, "message": result})
+    return JSONResponse({"ok": True, "message": result})
 
 
 if __name__ == "__main__":
