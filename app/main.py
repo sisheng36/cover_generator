@@ -20,11 +20,6 @@ from .scheduler import start as sched_start, stop as sched_stop, is_running as s
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("EmbyTool")
 
-UPLOAD_DIR = Path("/data/uploads")
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-OUTPUT_DIR = Path("/data/covers_output")
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
-
 app_config: dict = {}
 
 
@@ -33,6 +28,18 @@ def _new_client() -> EmbyClient:
         app_config.get("emby_server_url", ""),
         app_config.get("emby_api_key", ""),
     )
+
+
+def _output_dir() -> Path:
+    output_dir = Path(app_config.get("covers_output") or "/data/covers_output")
+    output_dir.mkdir(parents=True, exist_ok=True)
+    return output_dir
+
+
+def _temp_dir() -> Path:
+    temp_dir = _output_dir() / "tmp"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    return temp_dir
 
 
 def _scheduled_generate():
@@ -185,7 +192,7 @@ async def generate_cover(
     item_count: int = Form(None),
 ):
     ext = Path(image.filename).suffix if image.filename else ".jpg"
-    input_path = UPLOAD_DIR / f"input{ext}"
+    input_path = _temp_dir() / f"input{ext}"
     with open(input_path, "wb") as f:
         f.write(await image.read())
 
@@ -213,12 +220,11 @@ async def generate_cover(
                 item_count=item_count, config=cfg,
             )
         elif cover_style == "multi_1":
-            lib_dir = UPLOAD_DIR / "multi_temp"
+            lib_dir = _temp_dir() / "multi_temp"
             lib_dir.mkdir(parents=True, exist_ok=True)
             for i in range(1, 10):
                 target = lib_dir / f"{i}.jpg"
-                if not target.exists():
-                    shutil.copy(input_path, target)
+                shutil.copy(input_path, target)
             result = create_style_multi_1(
                 str(lib_dir), (title_zh, title_en), (fonts["zh_multi"], fonts["en_multi"]),
                 font_size=(zh_font_size, en_font_size),
@@ -231,7 +237,7 @@ async def generate_cover(
         if result is False:
             return JSONResponse({"ok": False, "message": "封面生成失败"}, status_code=500)
 
-        output_path = OUTPUT_DIR / "cover.png"
+        output_path = _output_dir() / "cover.png"
         image_data = base64.b64decode(result)
         with open(output_path, "wb") as f:
             f.write(image_data)

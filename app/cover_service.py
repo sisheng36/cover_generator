@@ -144,9 +144,9 @@ def _copy_local_poster(item: Dict, save_path: Path) -> Optional[str]:
     return None
 
 
-def _prepare_source_dir(config: dict, library_name: str, library_id: str) -> Path:
+def _prepare_source_dir(config: dict, library_name: str) -> Path:
     root = Path(config.get("covers_input") or "/data/input")
-    source_dir = root / _sanitize_name(library_name) / library_id
+    source_dir = root / _sanitize_name(library_name)
     source_dir.mkdir(parents=True, exist_ok=True)
     return source_dir
 
@@ -270,7 +270,7 @@ def generate_cover_for_library(
             random.shuffle(valid)
         valid = valid[:required]
 
-        source_dir = _prepare_source_dir(config, library_name, library_id)
+        source_dir = _prepare_source_dir(config, library_name)
         image_paths = []
 
         for idx, (item, img_url) in enumerate(valid):
@@ -309,17 +309,12 @@ def generate_cover_for_library(
                 config=badge_config,
             )
         elif style == "multi_1":
-            lib_dir = source_dir / "multi"
-            lib_dir.mkdir(parents=True, exist_ok=True)
-            for i, path in enumerate(image_paths[:9]):
-                target = lib_dir / f"{i + 1}.jpg"
-                shutil.copy(path, target)
             for i in range(len(image_paths[:9]), 9):
-                target = lib_dir / f"{i + 1}.jpg"
+                target = source_dir / f"{i + 1}.jpg"
                 if image_paths:
                     shutil.copy(image_paths[0], target)
             result = create_style_multi_1(
-                str(lib_dir),
+                str(source_dir),
                 (title_zh, title_en),
                 (fonts["zh_multi"], fonts["en_multi"]),
                 font_size=(settings["zh_font_size"], settings["en_font_size"]),
