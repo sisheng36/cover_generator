@@ -113,13 +113,13 @@ class EmbyClient:
             img.save(buf, format="JPEG", quality=95)
             jpeg_data = buf.getvalue()
 
-            url = f"{self.base_url}/Items/{library_id}/Images/Primary?api_key={self.api_key}"
-            headers = {"Content-Type": "image/jpeg"}
+            url = f"{self.base_url}/Items/{library_id}/Images/Primary"
+            headers = {"X-Emby-Token": self.api_key, "Content-Type": "image/jpeg"}
             resp = requests.post(url, data=jpeg_data, headers=headers, timeout=30)
             if resp.status_code in (200, 204):
                 logger.info(f"封面上传成功: {library_id}")
                 return True
-            logger.warning(f"封面上传失败 {library_id} -> {resp.status_code}")
+            logger.warning(f"封面上传失败 {library_id} -> {resp.status_code}: {resp.text[:200]}")
         except Exception as e:
             logger.error(f"封面上传异常: {e}")
         return False
