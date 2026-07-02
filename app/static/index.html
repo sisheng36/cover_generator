@@ -5,487 +5,819 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EmbyTool</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#f0f2f5;color:#333}
-.container{max-width:1024px;margin:0 auto;padding:24px 16px}
-h1{font-size:24px;margin-bottom:24px;color:#1a1a2e}
-.card{background:#fff;border-radius:12px;padding:24px;margin-bottom:20px;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
-.card h2{font-size:18px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid #eee}
-.form-group{margin-bottom:16px}
-.form-group label{display:block;font-size:14px;font-weight:500;margin-bottom:6px;color:#555}
-.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 12px;border:1px solid #d9d9d9;border-radius:8px;font-size:14px;outline:none;transition:border .2s}
-.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:#4a6cf7;box-shadow:0 0 0 2px rgba(74,108,247,0.15)}
-.form-group textarea{min-height:80px;font-family:monospace;font-size:13px}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-.form-group.checkbox{display:flex;align-items:center;gap:8px}
-.form-group.checkbox input{width:auto}
-.form-group.checkbox label{margin-bottom:0}
-.btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 24px;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;transition:all .2s;text-decoration:none}
-.btn-primary{background:#4a6cf7;color:#fff}
-.btn-primary:hover{background:#3b5de7}
-.btn-primary:disabled{background:#a0b4f9;cursor:not-allowed}
-.btn-success{background:#10b981;color:#fff}
-.btn-success:hover{background:#059669}
-.btn-danger{background:#ef4444;color:#fff}
-.btn-danger:hover{background:#dc2626}
-.btn-outline{background:transparent;color:#666;border:1px solid #d9d9d9}
-.btn-outline:hover{background:#f5f5f5}
-.btn-sm{padding:6px 14px;font-size:13px}
-.actions{display:flex;gap:12px;margin-top:8px;flex-wrap:wrap}
-.toast{position:fixed;top:24px;right:24px;padding:12px 20px;border-radius:8px;color:#fff;font-size:14px;z-index:1000;opacity:0;transition:opacity .3s;pointer-events:none}
-.toast.show{opacity:1}
-.toast.success{background:#10b981}
-.toast.error{background:#ef4444}
-.tab-bar{display:flex;gap:0;margin-bottom:20px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08)}
-.tab-btn{flex:1;padding:14px;text-align:center;font-size:14px;font-weight:500;cursor:pointer;border:none;background:transparent;color:#666;transition:all .2s}
-.tab-btn.active{background:#4a6cf7;color:#fff}
-.tab-btn:hover:not(.active){background:#f5f5f5}
-.tab-content{display:none}
-.tab-content.active{display:block}
-.upload-area{border:2px dashed #d9d9d9;border-radius:12px;padding:40px 20px;text-align:center;cursor:pointer;transition:all .2s;margin-bottom:16px}
-.upload-area:hover{border-color:#4a6cf7;background:#fafbff}
-.upload-area.has-image{border-color:#10b981;background:#f0fdf4}
-.upload-area img{max-width:100%;max-height:300px;border-radius:8px;margin-top:12px}
-.preview-area{margin-top:16px;text-align:center}
-.preview-area img{max-width:100%;max-height:400px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.12)}
-.hint{font-size:12px;color:#999;margin-top:4px}
-.library-list{display:grid;gap:8px;max-height:400px;overflow-y:auto;padding:4px 0}
-.library-item{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;border:1px solid #e5e7eb;cursor:pointer;transition:all .15s}
-.library-item:hover{border-color:#4a6cf7;background:#f8f9ff}
-.library-item.selected{border-color:#4a6cf7;background:#eef1ff}
-.library-item .checkbox{width:18px;height:18px;border:2px solid #d9d9d9;border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
-.library-item.selected .checkbox{background:#4a6cf7;border-color:#4a6cf7}
-.library-item.selected .checkbox::after{content:"✓";color:#fff;font-size:12px;font-weight:bold}
-.library-item .name{flex:1;font-size:14px}
-.library-item .type{font-size:12px;color:#999;background:#f3f4f6;padding:2px 8px;border-radius:4px}
-.status-bar{padding:12px;border-radius:8px;margin-top:12px;font-size:13px;display:none}
-.status-bar.info{background:#eef2ff;color:#4a6cf7;display:block}
-.status-bar.success{background:#ecfdf5;color:#059669;display:block}
-.status-bar.error{background:#fef2f2;color:#dc2626;display:block}
-.result-item{padding:8px 0;border-bottom:1px solid #f3f4f6;font-size:13px}
+:root{
+  --bg:#edf2f7;
+  --card:#ffffff;
+  --text:#1f2937;
+  --muted:#6b7280;
+  --line:#dbe3ef;
+  --blue:#2563eb;
+  --blue-soft:#eff6ff;
+  --green:#059669;
+  --green-soft:#ecfdf5;
+  --red:#dc2626;
+  --red-soft:#fef2f2;
+  --shadow:0 16px 36px rgba(15,23,42,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"SF Pro Display","PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(180deg,#f8fbff 0%,var(--bg) 100%);color:var(--text)}
+.container{max-width:1200px;margin:0 auto;padding:28px 16px 40px}
+h1{font-size:30px;font-weight:700;margin-bottom:8px}
+.page-subtitle{color:var(--muted);margin-bottom:24px;font-size:14px}
+.top-tabs,.sub-tabs{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.tab-btn,.sub-tab-btn{border:none;border-radius:999px;padding:11px 18px;background:#fff;color:var(--muted);cursor:pointer;box-shadow:var(--shadow);font-size:14px;font-weight:600;transition:.2s}
+.tab-btn.active,.sub-tab-btn.active{background:var(--text);color:#fff}
+.page{display:none}
+.page.active{display:block}
+.card{background:var(--card);border:1px solid rgba(219,227,239,.8);border-radius:22px;padding:22px;box-shadow:var(--shadow);margin-bottom:18px}
+.card h2{font-size:18px;margin-bottom:14px}
+.card h3{font-size:15px;margin-bottom:12px}
+.card p.section-desc{font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.7}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.form-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-group.full{grid-column:1/-1}
+.form-group label{font-size:14px;font-weight:600}
+.required::after{content:" *";color:var(--red)}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:12px;font-size:14px;outline:none;background:#fff;transition:.2s}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.form-group textarea{min-height:100px;resize:vertical}
+.hint{font-size:12px;color:var(--muted);line-height:1.6}
+.empty-note{padding:14px 16px;border-radius:14px;background:#f8fafc;border:1px dashed var(--line);font-size:13px;color:var(--muted);line-height:1.7}
+.toggle-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.toggle-row input,.checkbox-item input,.library-pick input{width:18px;height:18px;accent-color:var(--blue)}
+.actions{display:flex;gap:12px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;border:none;border-radius:12px;padding:11px 18px;font-size:14px;font-weight:600;cursor:pointer;transition:.2s}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-primary:hover{background:#1d4ed8}
+.btn-secondary{background:#fff;border:1px solid var(--line);color:var(--text)}
+.btn-secondary:hover{background:#f8fafc}
+.btn-success{background:var(--green);color:#fff}
+.btn-success:hover{background:#047857}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.save-bar{display:flex;justify-content:center;margin-top:8px}
+.style-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.style-card{border:2px solid transparent;border-radius:18px;padding:12px;background:#f8fafc;cursor:pointer;transition:.2s}
+.style-card.active{border-color:var(--blue);background:var(--blue-soft)}
+.style-card img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:12px;display:block}
+.style-card .title{font-size:15px;font-weight:700;margin-top:10px}
+.style-card .desc{font-size:12px;color:var(--muted);margin-top:4px}
+.library-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.library-pick{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:#fcfdff}
+.library-pick .meta{flex:1}
+.library-pick .name{font-size:14px;font-weight:700}
+.library-pick .type{display:inline-block;font-size:12px;color:var(--muted);margin-top:4px;background:#eef2f7;padding:2px 8px;border-radius:999px}
+.summary-chip{display:inline-flex;align-items:center;padding:8px 12px;border-radius:999px;background:#eef2ff;color:#1d4ed8;font-size:12px;font-weight:600;margin:0 8px 8px 0}
+.title-editor-list{display:grid;gap:12px}
+.title-editor{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:12px;padding:14px;border:1px solid var(--line);border-radius:16px;background:#fbfdff}
+.title-editor.disabled{opacity:.6}
+.title-editor .library-name{font-size:14px;font-weight:700;align-self:center}
+.settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.status-bar{display:none;margin-top:14px;padding:12px 14px;border-radius:14px;font-size:13px;line-height:1.6}
+.status-bar.info{display:block;background:var(--blue-soft);color:#1d4ed8}
+.status-bar.success{display:block;background:var(--green-soft);color:var(--green)}
+.status-bar.error{display:block;background:var(--red-soft);color:var(--red)}
+.result-list{margin-top:14px}
+.result-item{padding:10px 0;border-bottom:1px solid #eef2f7;font-size:13px}
 .result-item:last-child{border-bottom:none}
-.result-item .lib-name{font-weight:500}
-.result-item .ok{color:#059669}
-.result-item .fail{color:#dc2626}
-code{background:#eef2ff;padding:2px 8px;border-radius:4px;font-size:13px}
+.result-item strong{margin-right:8px}
+.notify-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.checkbox-item{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:#fcfdff;font-size:14px}
+.upload-area{border:2px dashed var(--line);border-radius:18px;padding:34px 18px;text-align:center;cursor:pointer;background:#fbfdff;transition:.2s}
+.upload-area:hover{border-color:var(--blue);background:#f8fbff}
+.upload-area.has-image{border-color:var(--green);background:#f0fdf4}
+.upload-area img{max-width:100%;max-height:300px;border-radius:14px;margin-top:12px}
+.preview-area{display:none;margin-top:16px;text-align:center}
+.preview-area img{max-width:100%;max-height:420px;border-radius:14px;box-shadow:0 16px 32px rgba(15,23,42,.18)}
+.inline-code{display:inline-block;padding:6px 10px;border-radius:10px;background:#f3f6fb;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;word-break:break-all}
+.toast{position:fixed;top:24px;right:24px;z-index:1000;padding:12px 18px;border-radius:12px;color:#fff;font-size:14px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.2s}
+.toast.show{opacity:1}
+.toast.success{background:var(--green)}
+.toast.error{background:var(--red)}
+@media (max-width: 900px){
+  .form-grid,.form-grid.three,.style-grid,.library-grid,.notify-list,.settings-grid,.title-editor{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
 <div class="container">
-<h1>EmbyTool</h1>
+  <h1>EmbyTool</h1>
+  <p class="page-subtitle">Emby 媒体库封面生成与入库通知配置</p>
 
-<div class="tab-bar">
-<button class="tab-btn active" onclick="switchTab('libraries')">媒体库</button>
-<button class="tab-btn" onclick="switchTab('cover')">手动生成</button>
-<button class="tab-btn" onclick="switchTab('config')">服务配置</button>
-<button class="tab-btn" onclick="switchTab('notify')">消息通知</button>
-</div>
+  <div class="top-tabs">
+    <button class="tab-btn active" data-page="basic" onclick="switchPage('basic')">基础设置</button>
+    <button class="tab-btn" data-page="cover" onclick="switchPage('cover')">媒体封面生成</button>
+    <button class="tab-btn" data-page="notify" onclick="switchPage('notify')">入库通知</button>
+  </div>
 
-<div id="tab-libraries" class="tab-content active">
-<div class="card">
-<h2>选择媒体库更新封面</h2>
-<div class="actions" style="margin-bottom:16px">
-<button class="btn btn-outline btn-sm" onclick="loadLibraries()">刷新列表</button>
-<button class="btn btn-primary btn-sm" onclick="selectAllLibs()">全选</button>
-<button class="btn btn-outline btn-sm" onclick="deselectAllLibs()">取消全选</button>
-</div>
-<div id="libraryList" class="library-list">
-<div style="text-align:center;color:#999;padding:40px">请先配置 Emby 服务器地址和 API Key</div>
-</div>
-<div id="generateStatus" class="status-bar"></div>
-<div id="generateResults"></div>
-<div class="actions" style="margin-top:16px">
-<button class="btn btn-success" onclick="generateSelected()" id="btnGenerate">生成选中库封面</button>
-<button class="btn btn-primary" onclick="generateAll()" id="btnGenerateAll">生成全部库封面</button>
-</div>
-</div>
-<div class="card" id="schedulerCard">
-<h2>定时任务</h2>
-<div class="form-group checkbox">
-<input id="scheduler_enabled" type="checkbox" onchange="onSchedulerToggle()">
-<label for="scheduler_enabled">启用定时封面更新</label>
-</div>
-<div class="form-row">
-<div class="form-group">
-<label>Cron 表达式</label>
-<input id="scheduler_cron" placeholder="0 4 * * *" onchange="onSchedulerChange()">
-<div class="hint">分 时 日 月 周 &nbsp;<code>0 4 * * *</code> = 每天凌晨4点</div>
-</div>
-<div class="form-group">
-<label>定时更新目标库</label>
-<select id="scheduled_libraries" multiple style="height:auto;min-height:80px" onchange="onSchedulerChange()">
-</select>
-<div class="hint">不选则更新所有库，按住 Ctrl/Cmd 多选</div>
-</div>
-</div>
-<div id="schedulerStatus" style="display:none;margin-top:8px;padding:8px 12px;border-radius:8px;font-size:13px"></div>
-<div class="actions">
-<button class="btn btn-outline btn-sm" onclick="restartScheduler()">重启定时任务</button>
-</div>
-</div>
-</div>
+  <section id="page-basic" class="page active">
+    <div class="card">
+      <h2>基础设置</h2>
+      <p class="section-desc">配置 Emby 连接、媒体库、TMDB 和封面目录。</p>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="required" for="emby_server_url">Emby 服务器</label>
+          <input id="emby_server_url" placeholder="例如 http://192.168.1.100:8096">
+          <div class="hint">不填写时无法拉取媒体库和更新封面。</div>
+        </div>
+        <div class="form-group">
+          <label class="required" for="emby_api_key">API Key</label>
+          <input id="emby_api_key" type="password" placeholder="Emby API Key">
+          <div class="hint">请填写可访问媒体库与图片接口的 Key。</div>
+        </div>
+        <div class="form-group">
+          <label for="tmdb_api_key">TMDB API Key</label>
+          <input id="tmdb_api_key" type="password" placeholder="未填写时剧集通知不会补充 TMDB 信息">
+          <div class="hint">用于入库通知中的剧集评分、类型和剧情简介。</div>
+        </div>
+        <div class="form-group">
+          <label for="sort_by">媒体排序方式</label>
+          <select id="sort_by">
+            <option value="Random">随机</option>
+            <option value="DateCreated">最新入库</option>
+            <option value="PremiereDate">最新发行</option>
+          </select>
+          <div class="hint">不填写时默认使用“随机”。</div>
+        </div>
+        <div class="form-group">
+          <label for="covers_input">下载的海报图片目录</label>
+          <input id="covers_input" placeholder="/data/input">
+          <div class="hint">未填写时默认使用 <code>/data/input</code>，生成时会优先落地到这个目录，并优先尝试本地 <code>poster.jpg</code>。</div>
+        </div>
+        <div class="form-group">
+          <label for="covers_output">生成的封面图片目录</label>
+          <input id="covers_output" placeholder="/data/covers_output">
+          <div class="hint">未填写时默认使用 <code>/data/covers_output</code>。</div>
+        </div>
+      </div>
+    </div>
 
-<div id="tab-cover" class="tab-content">
-<div class="card">
-<h2>上传图片手工生成封面</h2>
-<div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
-<p style="color:#999;font-size:14px">点击上传图片</p>
-<img id="preview" style="display:none">
-</div>
-<input id="fileInput" type="file" accept="image/*" style="display:none" onchange="handleFile(this)">
-<div class="form-row">
-<div class="form-group"><label>中文标题</label><input id="gen_title_zh" placeholder="例如: 黑客帝国"></div>
-<div class="form-group"><label>英文标题</label><input id="gen_title_en" placeholder="例如: The Matrix"></div>
-</div>
-<div class="form-group">
-<label>风格</label>
-<select id="gen_cover_style">
-<option value="single_1">单图风格 1</option>
-<option value="single_2">单图风格 2</option>
-<option value="multi_1">多图风格</option>
-</select>
-</div>
-<div class="actions">
-<button class="btn btn-success" onclick="generateCover()">生成封面</button>
-</div>
-<div class="preview-area" id="resultArea" style="display:none">
-<h3 style="margin-bottom:12px;font-size:16px">结果</h3>
-<img id="resultImage">
-<div style="margin-top:12px"><button class="btn btn-primary" onclick="downloadResult()">下载封面</button></div>
-</div>
-</div>
-</div>
+    <div class="card">
+      <h2>要选择的库</h2>
+      <p class="section-desc">选中的媒体库会用于手动生成和定时任务。</p>
+      <div class="actions" style="margin-bottom:14px">
+        <button class="btn btn-secondary" onclick="loadLibraries(true)">刷新媒体库</button>
+        <button class="btn btn-secondary" onclick="setAllLibraries(true)">全选</button>
+        <button class="btn btn-secondary" onclick="setAllLibraries(false)">取消全选</button>
+      </div>
+      <div id="librarySelector" class="library-grid"></div>
+    </div>
 
-<div id="tab-config" class="tab-content">
-<div class="card">
-<h2>Emby 服务器</h2>
-<div class="form-group"><label>服务器地址</label><input id="emby_server_url" placeholder="http://192.168.1.100:8096"></div>
-<div class="form-group"><label>API Key</label><input id="emby_api_key" placeholder="Emby API Key" type="password"></div>
-</div>
-<div class="card">
-<h2>封面生成参数</h2>
-<div class="form-row">
-<div class="form-group"><label>风格</label>
-<select id="cover_style">
-<option value="single_1">单图风格 1</option>
-<option value="single_2">单图风格 2</option>
-<option value="multi_1">多图风格</option>
-</select></div>
-<div class="form-group"><label>排序方式</label>
-<select id="sort_by">
-<option value="Random">随机</option>
-<option value="DateCreated">最新入库</option>
-<option value="PremiereDate">最新发行</option>
-</select></div>
-</div>
-<div class="form-row">
-<div class="form-group"><label>模糊强度</label><input id="blur_size" type="number" min="0" max="200"></div>
-<div class="form-group"><label>颜色混合比</label><input id="color_ratio" type="number" min="0" max="1" step="0.1"></div>
-</div>
-<div class="form-row">
-<div class="form-group"><label>中文字体大小</label><input id="zh_font_size" type="number" step="0.1" min="0.1" max="3"></div>
-<div class="form-group"><label>英文字体大小</label><input id="en_font_size" type="number" step="0.1" min="0.1" max="3"></div>
-</div>
-<div class="form-group checkbox"><input id="show_item_count" type="checkbox"><label for="show_item_count">显示媒体数量徽章</label></div>
-<div class="form-group"><label>徽章风格</label>
-<select id="badge_style"><option value="badge">徽章</option><option value="ribbon">缎带</option></select></div>
-<div class="form-group"><label>封面输出目录</label><input id="covers_output" placeholder="/data/covers_output"></div>
-</div>
-</div>
+    <div class="card">
+      <h2>定时任务</h2>
+      <p class="section-desc">按设定时间自动更新封面。</p>
+      <div class="toggle-row">
+        <input id="scheduler_enabled" type="checkbox">
+        <label for="scheduler_enabled">启用定时封面更新</label>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="scheduler_cron">Cron 表达式</label>
+          <input id="scheduler_cron" placeholder="0 4 * * *">
+          <div class="hint">默认 <code>0 4 * * *</code>，表示每天凌晨 4 点执行。</div>
+        </div>
+        <div class="form-group">
+          <label>定时更新目标库</label>
+          <div class="empty-note">直接使用“要选择的库”的勾选结果。</div>
+        </div>
+      </div>
+      <div class="actions">
+        <button class="btn btn-secondary" onclick="restartScheduler()">保存并重启定时任务</button>
+      </div>
+      <div id="schedulerStatus" class="status-bar"></div>
+    </div>
+  </section>
 
-<div id="tab-notify" class="tab-content">
-<div class="card">
-<h2>通知设置</h2>
-<div class="form-group checkbox"><input id="notification_enabled" type="checkbox"><label for="notification_enabled">启用消息通知</label></div>
-<div class="form-group"><label>Telegram Bot Token</label><input id="tg_token" type="password" placeholder="123456:ABC..."></div>
-<div class="form-group"><label>Telegram Chat ID</label><input id="tg_chat_id" placeholder="-1001234567890"></div>
-<div class="form-group"><label>TMDB API Key</label><input id="tmdb_api_key" type="password" placeholder="用于获取剧集详情"></div>
-<div class="form-group"><label>通知事件</label>
-<select id="notify_types" multiple style="height:auto;min-height:120px">
-<option value="library.new|ItemAdded">新入库</option>
-<option value="playback.start|media.play|PlaybackStart">开始播放</option>
-<option value="playback.stop|media.stop|PlaybackStop">停止播放</option>
-<option value="item.rate">用户标记</option>
-<option value="user.authenticated">登录成功</option>
-<option value="user.authenticationfailed">登录失败</option>
-</select></div>
-<div class="form-group checkbox"><input id="aggregate_enabled" type="checkbox"><label for="aggregate_enabled">剧集结入库聚合</label></div>
-<div class="form-group"><label>聚合时间（秒）</label><input id="aggregate_time" type="number" min="5" max="300"></div>
-</div>
-<div class="card" style="background:#f9fafb">
-<h2>Webhook 地址</h2>
-<p style="font-size:13px;color:#666;line-height:1.8">
-在 Emby 后台设置 Webhook：<br>
-<code>http://&lt;你的IP&gt;:8055/webhook/emby</code><br>
-触发事件：新添加媒体 / 播放事件，格式 JSON
-</p>
-</div>
-</div>
+  <section id="page-cover" class="page">
+    <div class="sub-tabs">
+      <button class="sub-tab-btn active" data-cover-tab="style" onclick="switchCoverTab('style')">封面风格</button>
+      <button class="sub-tab-btn" data-cover-tab="title" onclick="switchCoverTab('title')">封面标题</button>
+      <button class="sub-tab-btn" data-cover-tab="settings" onclick="switchCoverTab('settings')">风格设置</button>
+    </div>
 
-<div class="actions" style="justify-content:center;margin-top:8px">
-<button class="btn btn-primary" onclick="saveConfig()" style="min-width:200px">保存全部配置</button>
-</div>
+    <div id="cover-tab-style" class="card cover-tab">
+      <h2>封面风格</h2>
+      <p class="section-desc">选择用于媒体库封面生成的风格。</p>
+      <div id="styleCards" class="style-grid"></div>
+    </div>
+
+    <div id="cover-tab-title" class="card cover-tab" style="display:none">
+      <h2>封面标题</h2>
+      <div class="toggle-row">
+        <input id="custom_library_titles_enabled" type="checkbox" onchange="renderTitleEditors()">
+        <label for="custom_library_titles_enabled">启用自定义媒体库名称</label>
+      </div>
+      <p class="section-desc">可为每个媒体库设置自定义中英文标题。</p>
+      <div id="titleEditorList" class="title-editor-list"></div>
+    </div>
+
+    <div id="cover-tab-settings" class="card cover-tab" style="display:none">
+      <h2>风格设置</h2>
+      <div class="settings-grid">
+        <div class="card" style="margin:0;padding:18px">
+          <h3>单图风格</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="single_use_primary">优先使用竖版海报</label>
+              <select id="single_use_primary">
+                <option value="true">是，优先 poster / Primary</option>
+                <option value="false">否，优先横版背景图</option>
+              </select>
+              <div class="hint">默认优先竖版海报，没找到时再回退到背景图。</div>
+            </div>
+            <div class="form-group">
+              <label for="single_blur_size">模糊强度</label>
+              <input id="single_blur_size" type="number" min="0" max="200" placeholder="50">
+              <div class="hint">留空默认 50。</div>
+            </div>
+            <div class="form-group">
+              <label for="single_color_ratio">颜色混合比</label>
+              <input id="single_color_ratio" type="number" min="0" max="1" step="0.1" placeholder="0.8">
+              <div class="hint">留空默认 0.8。</div>
+            </div>
+            <div class="form-group">
+              <label for="single_zh_font_size">中文字体大小</label>
+              <input id="single_zh_font_size" type="number" min="0.1" max="3" step="0.1" placeholder="1.0">
+              <div class="hint">留空默认 1.0。</div>
+            </div>
+            <div class="form-group">
+              <label for="single_en_font_size">英文字体大小</label>
+              <input id="single_en_font_size" type="number" min="0.1" max="3" step="0.1" placeholder="1.0">
+              <div class="hint">留空默认 1.0。</div>
+            </div>
+            <div class="form-group">
+              <label for="single_show_item_count">显示媒体数量徽章</label>
+              <select id="single_show_item_count">
+                <option value="false">否</option>
+                <option value="true">是</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="single_badge_style">徽章风格</label>
+              <select id="single_badge_style">
+                <option value="badge">徽章</option>
+                <option value="ribbon">缎带</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="single_badge_size_ratio">徽章大小比例</label>
+              <input id="single_badge_size_ratio" type="number" min="0.05" max="0.3" step="0.01" placeholder="0.12">
+              <div class="hint">留空默认 0.12。</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin:0;padding:18px">
+          <h3>多图风格</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="multi_1_use_primary">优先使用竖版海报</label>
+              <select id="multi_1_use_primary">
+                <option value="true">是，优先 poster / Primary</option>
+                <option value="false">否，优先横版背景图</option>
+              </select>
+              <div class="hint">默认优先竖版海报，适合九宫格拼贴。</div>
+            </div>
+            <div class="form-group">
+              <label for="multi_1_blur">背景模糊开关</label>
+              <select id="multi_1_blur">
+                <option value="false">关闭</option>
+                <option value="true">开启</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="multi_blur_size">模糊强度</label>
+              <input id="multi_blur_size" type="number" min="0" max="200" placeholder="50">
+              <div class="hint">留空默认 50。</div>
+            </div>
+            <div class="form-group">
+              <label for="multi_color_ratio">颜色混合比</label>
+              <input id="multi_color_ratio" type="number" min="0" max="1" step="0.1" placeholder="0.8">
+              <div class="hint">留空默认 0.8。</div>
+            </div>
+            <div class="form-group">
+              <label for="multi_zh_font_size">中文字体大小</label>
+              <input id="multi_zh_font_size" type="number" min="0.1" max="3" step="0.1" placeholder="1.0">
+              <div class="hint">留空默认 1.0。</div>
+            </div>
+            <div class="form-group">
+              <label for="multi_en_font_size">英文字体大小</label>
+              <input id="multi_en_font_size" type="number" min="0.1" max="3" step="0.1" placeholder="1.0">
+              <div class="hint">留空默认 1.0。</div>
+            </div>
+            <div class="form-group">
+              <label for="multi_show_item_count">显示媒体数量徽章</label>
+              <select id="multi_show_item_count">
+                <option value="false">否</option>
+                <option value="true">是</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="multi_badge_style">徽章风格</label>
+              <select id="multi_badge_style">
+                <option value="badge">徽章</option>
+                <option value="ribbon">缎带</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="multi_badge_size_ratio">徽章大小比例</label>
+              <input id="multi_badge_size_ratio" type="number" min="0.05" max="0.3" step="0.01" placeholder="0.12">
+              <div class="hint">留空默认 0.12。</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>生成封面</h2>
+      <p class="section-desc">按当前设置生成媒体库封面。</p>
+      <div id="selectedLibrariesSummary" style="margin-bottom:14px"></div>
+      <div class="actions">
+        <button class="btn btn-success" id="btnGenerateSelected" onclick="generateSelected()">生成已选媒体库封面</button>
+        <button class="btn btn-primary" id="btnGenerateAll" onclick="generateAll()">生成全部媒体库封面</button>
+      </div>
+      <div id="generateStatus" class="status-bar"></div>
+      <div id="generateResults" class="result-list"></div>
+    </div>
+  </section>
+
+  <section id="page-notify" class="page">
+    <div class="card">
+      <h2>入库通知</h2>
+      <p class="section-desc">配置 Telegram 通知和 Webhook 事件。</p>
+      <div class="toggle-row">
+        <input id="notification_enabled" type="checkbox">
+        <label for="notification_enabled">启用 Telegram 通知</label>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="tg_token">Telegram Bot Token</label>
+          <input id="tg_token" type="password" placeholder="123456:ABC...">
+          <div class="hint">未填写时不会发送 Telegram 通知。</div>
+        </div>
+        <div class="form-group">
+          <label for="tg_chat_id">Telegram Chat ID</label>
+          <input id="tg_chat_id" placeholder="-1001234567890">
+          <div class="hint">支持个人、群组和频道 Chat ID。</div>
+        </div>
+      </div>
+      <div class="card" style="margin:18px 0 0;padding:18px">
+        <h3>通知事件</h3>
+        <div id="notifyTypeList" class="notify-list"></div>
+      </div>
+      <div class="form-grid" style="margin-top:16px">
+        <div class="form-group">
+          <label for="aggregate_time">聚合时间（秒）</label>
+          <input id="aggregate_time" type="number" min="5" max="300" placeholder="15">
+          <div class="hint">留空默认 15 秒。</div>
+        </div>
+        <div class="form-group" style="justify-content:flex-end">
+          <div class="toggle-row" style="margin-top:28px">
+            <input id="aggregate_enabled" type="checkbox">
+            <label for="aggregate_enabled">启用剧集入库聚合</label>
+          </div>
+          <div class="hint">开启后，同一剧集短时间内入库会合并成一条消息。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Webhook 地址</h2>
+      <p class="section-desc">在 Emby 后台填入下面的 Webhook 地址。</p>
+      <div class="inline-code" id="webhookUrl"></div>
+    </div>
+  </section>
+
+  <div class="save-bar">
+    <button class="btn btn-primary" onclick="saveConfig()" style="min-width:220px">保存全部配置</button>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-let selectedFile = null;
-let currentResultBase64 = null;
-let libraryCache = [];
-
-function switchTab(name) {
-document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
-document.querySelector(`.tab-btn[onclick*="'${name}'"]`).classList.add('active');
-document.getElementById(`tab-${name}`).classList.add('active');
-}
-
-function showToast(msg,type){const t=document.getElementById('toast');t.textContent=msg;t.className=`toast ${type} show`;setTimeout(()=>t.classList.remove('show'),3000)}
-
-async function loadConfig(){
-try{
-const r=await fetch('/api/config');const cfg=await r.json();
-const map={
-emby_server_url,emby_api_key,cover_style,sort_by,
-blur_size,color_ratio,zh_font_size,en_font_size,
-show_item_count,badge_style,covers_output,
-notification_enabled,tg_token,tg_chat_id,tmdb_api_key,
-aggregate_enabled,aggregate_time,
-scheduler_enabled,scheduler_cron,
+const state = {
+  config: {},
+  libraries: [],
+  selectedFile: null,
+  currentResultBase64: null,
 };
-for(const[id,key]of Object.entries(map)){
-const el=document.getElementById(id);if(!el)continue;
-if(el.type==='checkbox')el.checked=!!cfg[key];
-else el.value=cfg[key]??'';
-}
-loadLibraries();
-loadSchedulerStatus();
-loadScheduledLibs();
-}catch(e){showToast('加载配置失败: '+e.message,'error')}
-}
 
-async function saveConfig(){
-const ids=[
-'emby_server_url','emby_api_key','cover_style','sort_by',
-'blur_size','color_ratio','zh_font_size','en_font_size',
-'show_item_count','badge_style','covers_output',
-'notification_enabled','tg_token','tg_chat_id','tmdb_api_key',
-'aggregate_enabled','aggregate_time',
-'scheduler_enabled','scheduler_cron',
+const notifyEvents = [
+  { value: 'library.new|ItemAdded', label: '☑️ 新入库' },
+  { value: 'playback.start|media.play|PlaybackStart', label: '☑️ 开始播放' },
+  { value: 'playback.stop|media.stop|PlaybackStop', label: '☑️ 停止播放' },
+  { value: 'item.rate', label: '☑️ 用户标记' },
+  { value: 'user.authenticated', label: '☑️ 登录成功' },
+  { value: 'user.authenticationfailed', label: '☑️ 登录失败' },
 ];
-const cfg={};
-for(const id of ids){
-const el=document.getElementById(id);if(!el)continue;
-cfg[id]=el.type==='checkbox'?el.checked:el.value;
-}
-for(const selId of['notify_types','scheduled_libraries']){
-const sel=document.getElementById(selId);
-if(sel)cfg[selId]=Array.from(sel.selectedOptions).map(o=>o.value);
-}
-for(const k of['blur_size','color_ratio','zh_font_size','en_font_size','aggregate_time']){
-if(cfg[k]===''||cfg[k]==null)delete cfg[k];
-else cfg[k]=Number(cfg[k]);
-}
-try{
-const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)});
-const res=await r.json();
-if(res.ok){showToast('配置已保存','success');loadLibraries();loadSchedulerStatus()}
-else showToast('保存失败: '+res.message,'error');
-}catch(e){showToast('保存失败: '+e.message,'error')}
+
+const styleOptions = [
+  { value: 'single_1', title: '单图风格 1', desc: '适合主视觉突出的海报', image: '/images/style_1.jpeg' },
+  { value: 'single_2', title: '单图风格 2', desc: '适合人物和场景铺满画面', image: '/images/style_2.jpeg' },
+  { value: 'multi_1', title: '多图风格 1', desc: '适合九宫格海报墙效果', image: '/images/style_3.jpeg' },
+];
+
+function switchPage(page){
+  document.querySelectorAll('.tab-btn').forEach(btn=>btn.classList.toggle('active', btn.dataset.page===page));
+  document.querySelectorAll('.page').forEach(el=>el.classList.toggle('active', el.id===`page-${page}`));
 }
 
-async function loadLibraries(){
-const el=document.getElementById('libraryList');
-try{
-const r=await fetch('/api/libraries');const data=await r.json();
-if(!data.ok||!data.libraries||data.libraries.length===0){
-el.innerHTML='<div style="text-align:center;color:#999;padding:40px">未获取到媒体库，请检查 Emby 配置</div>';
-return;
-}
-libraryCache=data.libraries;
-el.innerHTML=data.libraries.map(lib=>
-`<div class="library-item" data-id="${lib.id}" onclick="toggleLib('${lib.id}')">
-<div class="checkbox"></div>
-<span class="name">${lib.name}</span>
-<span class="type">${lib.type||'?'}</span>
-</div>`
-).join('');
-populateSchedulerLibs(data.libraries);
-}catch(e){
-el.innerHTML='<div style="text-align:center;color:#999;padding:40px">连接 Emby 失败: '+e.message+'</div>';
-}
+function switchCoverTab(tab){
+  document.querySelectorAll('.sub-tab-btn').forEach(btn=>btn.classList.toggle('active', btn.dataset.coverTab===tab));
+  document.querySelectorAll('.cover-tab').forEach(el=>{el.style.display = el.id===`cover-tab-${tab}` ? 'block' : 'none';});
 }
 
-function populateSchedulerLibs(libs){
-const sel=document.getElementById('scheduled_libraries');
-sel.innerHTML=libs.map(l=>`<option value="${l.id}">${l.name}</option>`).join('');
-loadScheduledLibs();
+function showToast(message, type){
+  const el = document.getElementById('toast');
+  el.textContent = message;
+  el.className = `toast ${type} show`;
+  setTimeout(()=>el.classList.remove('show'), 2600);
 }
 
-async function loadScheduledLibs(){
-try{
-const r=await fetch('/api/config');
-const cfg=await r.json();
-const selected=cfg.scheduled_libraries||[];
-const sel=document.getElementById('scheduled_libraries');
-Array.from(sel.options).forEach(o=>{o.selected=selected.includes(o.value)});
-}catch(e){}
+function setInputValue(id, value){
+  const el = document.getElementById(id);
+  if(!el)return;
+  if(el.type === 'checkbox'){
+    el.checked = Boolean(value);
+    return;
+  }
+  el.value = value ?? '';
 }
 
-async function loadSchedulerStatus(){
-try{
-const r=await fetch('/api/scheduler/status');
-const s=await r.json();
-const el=document.getElementById('schedulerStatus');
-if(s.running){
-el.style.display='block';
-el.className='status-bar success';
-el.innerHTML=`⏰ 定时任务运行中 &nbsp;|&nbsp; 下次执行: <strong>${s.next_run||'未知'}</strong>`;
-}else{
-el.style.display='block';
-el.className='status-bar info';
-el.textContent='⏸️ 定时任务未运行';
-}
-}catch(e){}
+function parseBoolean(value){
+  if(value === true || value === false)return value;
+  return String(value) === 'true';
 }
 
-function onSchedulerToggle(){
-saveConfig();
+function getSelectedNotifyTypes(){
+  return Array.from(document.querySelectorAll('#notifyTypeList input:checked')).map(input=>input.value);
 }
 
-function onSchedulerChange(){
-saveConfig();
+function renderNotifyTypes(){
+  const selected = new Set(state.config.notify_types || []);
+  document.getElementById('notifyTypeList').innerHTML = notifyEvents.map(event=>`
+    <label class="checkbox-item">
+      <input type="checkbox" value="${event.value}" ${selected.has(event.value) ? 'checked' : ''}>
+      <span>${event.label}</span>
+    </label>
+  `).join('');
 }
 
-async function restartScheduler(){
-try{
-const r=await fetch('/api/scheduler/restart',{method:'POST'});
-const s=await r.json();
-showToast('定时任务已重启','success');
-loadSchedulerStatus();
-}catch(e){showToast('重启失败: '+e.message,'error')}
+function renderStyleCards(){
+  const current = state.config.cover_style || 'single_1';
+  document.getElementById('styleCards').innerHTML = styleOptions.map(style=>`
+    <div class="style-card ${style.value===current ? 'active' : ''}" onclick="selectStyle('${style.value}')">
+      <img src="${style.image}" alt="${style.title}">
+      <div class="title">${style.title}</div>
+      <div class="desc">${style.desc}</div>
+    </div>
+  `).join('');
 }
 
-function toggleLib(id){
-const el=document.querySelector(`.library-item[data-id="${id}"]`);
-if(el)el.classList.toggle('selected');
+function selectStyle(value){
+  state.config.cover_style = value;
+  renderStyleCards();
 }
 
-function selectAllLibs(){document.querySelectorAll('.library-item').forEach(el=>el.classList.add('selected'))}
-function deselectAllLibs(){document.querySelectorAll('.library-item').forEach(el=>el.classList.remove('selected'))}
-
-function getSelectedLibIds(){
-return Array.from(document.querySelectorAll('.library-item.selected')).map(el=>el.dataset.id);
+function renderLibrarySelector(){
+  const wrap = document.getElementById('librarySelector');
+  if(!hasEmbyConfig()){
+    wrap.innerHTML = '<div class="empty-note">请先填写 Emby 服务器和 API Key，然后点击“刷新媒体库”。</div>';
+    return;
+  }
+  if(!state.libraries.length){
+    wrap.innerHTML = '<div class="empty-note">还没有加载到媒体库。请检查 Emby 配置是否正确，或点击“刷新媒体库”。</div>';
+    return;
+  }
+  const selected = new Set(state.config.selected_libraries || []);
+  wrap.innerHTML = state.libraries.map(lib=>`
+    <label class="library-pick">
+      <input type="checkbox" value="${lib.id}" ${selected.has(lib.id) ? 'checked' : ''} onchange="toggleSelectedLibrary('${lib.id}', this.checked)">
+      <div class="meta">
+        <div class="name">${escapeHtml(lib.name)}</div>
+        <div class="type">${escapeHtml(lib.type || '未知类型')}</div>
+      </div>
+    </label>
+  `).join('');
+  renderSelectedLibrariesSummary();
 }
 
-function showStatus(msg,type){
-const el=document.getElementById('generateStatus');
-el.textContent=msg;el.className=`status-bar ${type}`;
+function renderSelectedLibrariesSummary(){
+  const selected = new Set(state.config.selected_libraries || []);
+  const libs = state.libraries.filter(lib=>selected.has(lib.id));
+  const el = document.getElementById('selectedLibrariesSummary');
+  if(!libs.length){
+    el.innerHTML = '<div class="empty-note">当前还没有选中媒体库。请到“基础设置”里勾选需要生成封面的库。</div>';
+    return;
+  }
+  el.innerHTML = libs.map(lib=>`<span class="summary-chip">${escapeHtml(lib.name)}</span>`).join('');
 }
 
-function clearResults(){
-document.getElementById('generateResults').innerHTML='';
+function renderTitleEditors(){
+  const enabled = document.getElementById('custom_library_titles_enabled').checked;
+  const wrap = document.getElementById('titleEditorList');
+  if(!state.libraries.length){
+    wrap.innerHTML = '<div class="empty-note">加载到媒体库后，这里会自动列出每个媒体库对应的中英文自定义标题输入框。</div>';
+    return;
+  }
+  const overrides = state.config.library_title_overrides || {};
+  wrap.innerHTML = state.libraries.map(lib=>{
+    const current = overrides[lib.id] || overrides[lib.name] || { zh: '', en: '' };
+    return `
+      <div class="title-editor ${enabled ? '' : 'disabled'}">
+        <div class="library-name">${escapeHtml(lib.name)}</div>
+        <div class="form-group" style="gap:4px">
+          <label>自定义中文</label>
+          <input data-title-lib-id="${lib.id}" data-title-field="zh" value="${escapeHtmlAttr(current.zh || '')}" ${enabled ? '' : 'disabled'} placeholder="留空则使用媒体库名称">
+        </div>
+        <div class="form-group" style="gap:4px">
+          <label>自定义英文</label>
+          <input data-title-lib-id="${lib.id}" data-title-field="en" value="${escapeHtmlAttr(current.en || '')}" ${enabled ? '' : 'disabled'} placeholder="可不填">
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function toggleSelectedLibrary(id, checked){
+  const selected = new Set(state.config.selected_libraries || []);
+  if(checked)selected.add(id);
+  else selected.delete(id);
+  state.config.selected_libraries = Array.from(selected);
+  renderSelectedLibrariesSummary();
+}
+
+function setAllLibraries(checked){
+  state.config.selected_libraries = checked ? state.libraries.map(lib=>lib.id) : [];
+  renderLibrarySelector();
+}
+
+function hasEmbyConfig(){
+  return Boolean((state.config.emby_server_url || '').trim() && (state.config.emby_api_key || '').trim());
+}
+
+function escapeHtml(value){
+  return String(value ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');
+}
+
+function escapeHtmlAttr(value){
+  return escapeHtml(value);
+}
+
+function applyConfigToForm(){
+  const cfg = state.config;
+  [
+    'emby_server_url','emby_api_key','tmdb_api_key','sort_by','covers_input','covers_output',
+    'single_blur_size','single_color_ratio','single_zh_font_size','single_en_font_size',
+    'single_badge_size_ratio','multi_blur_size','multi_color_ratio','multi_zh_font_size',
+    'multi_en_font_size','multi_badge_size_ratio','scheduler_cron','tg_token','tg_chat_id',
+    'aggregate_time'
+  ].forEach(id=>setInputValue(id, cfg[id]));
+
+  document.getElementById('scheduler_enabled').checked = Boolean(cfg.scheduler_enabled);
+  document.getElementById('notification_enabled').checked = Boolean(cfg.notification_enabled);
+  document.getElementById('custom_library_titles_enabled').checked = Boolean(cfg.custom_library_titles_enabled);
+  document.getElementById('aggregate_enabled').checked = Boolean(cfg.aggregate_enabled);
+
+  setInputValue('single_use_primary', String(Boolean(cfg.single_use_primary)));
+  setInputValue('single_show_item_count', String(Boolean(cfg.single_show_item_count)));
+  setInputValue('single_badge_style', cfg.single_badge_style || 'badge');
+  setInputValue('multi_1_use_primary', String(Boolean(cfg.multi_1_use_primary)));
+  setInputValue('multi_1_blur', String(Boolean(cfg.multi_1_blur)));
+  setInputValue('multi_show_item_count', String(Boolean(cfg.multi_show_item_count)));
+  setInputValue('multi_badge_style', cfg.multi_badge_style || 'badge');
+
+  renderNotifyTypes();
+  renderStyleCards();
+  renderLibrarySelector();
+  renderTitleEditors();
+}
+
+async function loadConfig(silent=false){
+  const response = await fetch('/api/config');
+  if(!response.ok)throw new Error('配置读取失败');
+  state.config = await response.json();
+  applyConfigToForm();
+  if(!silent)showWebhookUrl();
+}
+
+async function loadLibraries(silentToast=false){
+  if(!hasEmbyConfig()){
+    renderLibrarySelector();
+    renderTitleEditors();
+    if(!silentToast)showToast('请先填写 Emby 服务器和 API Key', 'error');
+    return;
+  }
+  try{
+    const response = await fetch('/api/libraries');
+    const data = await response.json();
+    if(!data.ok)throw new Error(data.message || '获取媒体库失败');
+    state.libraries = data.libraries || [];
+    renderLibrarySelector();
+    renderTitleEditors();
+    if(!silentToast)showToast('媒体库已刷新', 'success');
+  }catch(error){
+    state.libraries = [];
+    renderLibrarySelector();
+    renderTitleEditors();
+    if(!silentToast)showToast(`加载媒体库失败: ${error.message}`, 'error');
+  }
+}
+
+function collectTitleOverrides(){
+  const result = {};
+  document.querySelectorAll('[data-title-lib-id]').forEach(input=>{
+    const id = input.dataset.titleLibId;
+    const field = input.dataset.titleField;
+    result[id] = result[id] || { zh: '', en: '' };
+    result[id][field] = input.value.trim();
+  });
+  return result;
+}
+
+function collectConfigPayload(){
+  const payload = {
+    emby_server_url: document.getElementById('emby_server_url').value.trim(),
+    emby_api_key: document.getElementById('emby_api_key').value.trim(),
+    tmdb_api_key: document.getElementById('tmdb_api_key').value.trim(),
+    sort_by: document.getElementById('sort_by').value || 'Random',
+    covers_input: document.getElementById('covers_input').value.trim(),
+    covers_output: document.getElementById('covers_output').value.trim(),
+    selected_libraries: state.config.selected_libraries || [],
+    cover_style: state.config.cover_style || 'single_1',
+    custom_library_titles_enabled: document.getElementById('custom_library_titles_enabled').checked,
+    library_title_overrides: collectTitleOverrides(),
+    single_use_primary: parseBoolean(document.getElementById('single_use_primary').value),
+    single_show_item_count: parseBoolean(document.getElementById('single_show_item_count').value),
+    single_badge_style: document.getElementById('single_badge_style').value,
+    multi_1_use_primary: parseBoolean(document.getElementById('multi_1_use_primary').value),
+    multi_1_blur: parseBoolean(document.getElementById('multi_1_blur').value),
+    multi_show_item_count: parseBoolean(document.getElementById('multi_show_item_count').value),
+    multi_badge_style: document.getElementById('multi_badge_style').value,
+    scheduler_enabled: document.getElementById('scheduler_enabled').checked,
+    scheduler_cron: document.getElementById('scheduler_cron').value.trim(),
+    scheduled_libraries: state.config.selected_libraries || [],
+    notification_enabled: document.getElementById('notification_enabled').checked,
+    tg_token: document.getElementById('tg_token').value.trim(),
+    tg_chat_id: document.getElementById('tg_chat_id').value.trim(),
+    notify_types: getSelectedNotifyTypes(),
+    aggregate_enabled: document.getElementById('aggregate_enabled').checked,
+    aggregate_time: document.getElementById('aggregate_time').value.trim(),
+  };
+
+  [
+    'single_blur_size','single_color_ratio','single_zh_font_size','single_en_font_size','single_badge_size_ratio',
+    'multi_blur_size','multi_color_ratio','multi_zh_font_size','multi_en_font_size','multi_badge_size_ratio',
+  ].forEach(id=>{
+    const value = document.getElementById(id).value.trim();
+    if(value !== '')payload[id] = Number(value);
+  });
+  if(payload.aggregate_time !== '')payload.aggregate_time = Number(payload.aggregate_time);
+
+  return payload;
+}
+
+async function saveConfig(silent=false){
+  try{
+    const payload = collectConfigPayload();
+    const response = await fetch('/api/config', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await response.json();
+    if(!data.ok)throw new Error(data.message || '保存失败');
+    state.config = data.config || payload;
+    applyConfigToForm();
+    await loadSchedulerStatus();
+    if(hasEmbyConfig())await loadLibraries(true);
+    if(!silent)showToast('配置已保存并重新加载到页面', 'success');
+    return true;
+  }catch(error){
+    if(!silent)showToast(`保存失败: ${error.message}`, 'error');
+    return false;
+  }
+}
+
+function showStatus(message, type){
+  const el = document.getElementById('generateStatus');
+  el.textContent = message;
+  el.className = `status-bar ${type}`;
+}
+
+function clearGenerateResults(){
+  document.getElementById('generateResults').innerHTML = '';
 }
 
 async function generateSelected(){
-const ids=getSelectedLibIds();
-if(!ids.length){showToast('请先选择媒体库','error');return}
-await doGenerate(ids);
+  const ids = state.config.selected_libraries || [];
+  if(!ids.length){
+    showToast('请先在“基础设置”里勾选媒体库', 'error');
+    switchPage('basic');
+    return;
+  }
+  const saved = await saveConfig(true);
+  if(!saved)return;
+  await generateLibraries(ids);
 }
 
 async function generateAll(){
-const ids=libraryCache.map(l=>l.id);
-if(!ids.length){showToast('没有媒体库','error');return}
-await doGenerate(ids);
+  if(!state.libraries.length)await loadLibraries(true);
+  const ids = state.libraries.map(lib=>lib.id);
+  if(!ids.length){
+    showToast('没有可用的媒体库', 'error');
+    return;
+  }
+  const saved = await saveConfig(true);
+  if(!saved)return;
+  await generateLibraries(ids);
 }
 
-async function doGenerate(ids){
-const btn=document.getElementById('btnGenerate');
-const btn2=document.getElementById('btnGenerateAll');
-btn.disabled=true;btn2.disabled=true;
-clearResults();
-showStatus('正在生成封面，请稍候...','info');
-
-try{
-const r=await fetch('/api/libraries/generate',{
-method:'POST',
-headers:{'Content-Type':'application/json'},
-body:JSON.stringify({library_ids:ids}),
-});
-const text=await r.text();
-let data;
-try{data=JSON.parse(text)}
-catch(parseErr){
-showStatus(`请求失败: HTTP ${r.status}，响应不是 JSON。原文前200字符: ${text.slice(0,200)}`,'error');
-return;
-}
-if(data.ok){
-const resultsEl=document.getElementById('generateResults');
-let html='<div style="margin-top:12px"><h3 style="font-size:15px;margin-bottom:8px">生成结果</h3>';
-for(const res of data.results){
-const ok=res.ok;
-html+=`<div class="result-item"><span class="lib-name">${res.library}</span> <span class="${ok?'ok':'fail'}">${ok?'✓':'✗'} ${res.message}</span></div>`;
-}
-html+='</div>';
-resultsEl.innerHTML=html;
-showStatus('封面生成完成','success');
-}else{
-showStatus('失败: '+data.message,'error');
-}
-}catch(e){
-showStatus('请求失败: '+e.message,'error');
-}finally{
-btn.disabled=false;btn2.disabled=false;
-}
+async function generateLibraries(ids){
+  const btnSelected = document.getElementById('btnGenerateSelected');
+  const btnAll = document.getElementById('btnGenerateAll');
+  btnSelected.disabled = true;
+  btnAll.disabled = true;
+  clearGenerateResults();
+  showStatus('正在生成封面，请稍候...', 'info');
+  try{
+    const response = await fetch('/api/libraries/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ library_ids: ids }),
+    });
+    const data = await response.json();
+    if(!data.ok)throw new Error(data.message || '生成失败');
+    document.getElementById('generateResults').innerHTML = (data.results || []).map(item=>`
+      <div class="result-item">
+        <strong>${escapeHtml(item.library)}</strong>
+        <span style="color:${item.ok ? 'var(--green)' : 'var(--red)'}">${item.ok ? '✓' : '✗'} ${escapeHtml(item.message)}</span>
+      </div>
+    `).join('');
+    showStatus('封面生成完成', 'success');
+  }catch(error){
+    showStatus(`生成失败: ${error.message}`, 'error');
+  }finally{
+    btnSelected.disabled = false;
+    btnAll.disabled = false;
+  }
 }
 
-function handleFile(input){
-selectedFile=input.files[0];if(!selectedFile)return;
-const reader=new FileReader();
-reader.onload=e=>{
-document.getElementById('preview').src=e.target.result;
-document.getElementById('preview').style.display='block';
-document.getElementById('uploadArea').classList.add('has-image');
-document.querySelector('#uploadArea p').textContent=selectedFile.name;
-};
-reader.readAsDataURL(selectedFile);
+async function loadSchedulerStatus(){
+  try{
+    const response = await fetch('/api/scheduler/status');
+    const data = await response.json();
+    const el = document.getElementById('schedulerStatus');
+    if(data.running){
+      el.className = 'status-bar success';
+      el.textContent = `定时任务运行中，下次执行时间：${data.next_run || '未知'}`;
+    }else{
+      el.className = 'status-bar info';
+      el.textContent = '定时任务未运行';
+    }
+  }catch(error){
+    const el = document.getElementById('schedulerStatus');
+    el.className = 'status-bar error';
+    el.textContent = `读取定时任务状态失败: ${error.message}`;
+  }
 }
 
-async function generateCover(){
-if(!selectedFile){showToast('请上传图片','error');return}
-const btn=document.querySelector('#tab-cover .btn-success');
-btn.disabled=true;btn.textContent='生成中...';
-const fd=new FormData();
-fd.append('image',selectedFile);
-fd.append('title_zh',document.getElementById('gen_title_zh').value);
-fd.append('title_en',document.getElementById('gen_title_en').value);
-fd.append('cover_style',document.getElementById('gen_cover_style').value);
-fd.append('blur_size',document.getElementById('blur_size').value||50);
-fd.append('color_ratio',document.getElementById('color_ratio').value||0.8);
-fd.append('zh_font_size',document.getElementById('zh_font_size').value||1.0);
-fd.append('en_font_size',document.getElementById('en_font_size').value||1.0);
-fd.append('show_item_count',document.getElementById('show_item_count').checked);
-fd.append('badge_style',document.getElementById('badge_style').value);
-try{
-const r=await fetch('/api/generate',{method:'POST',body:fd});
-const res=await r.json();
-if(res.ok){
-currentResultBase64=res.image_base64;
-document.getElementById('resultImage').src=res.image_base64;
-document.getElementById('resultArea').style.display='block';
-showToast('生成成功','success');
-}else showToast('失败: '+res.message,'error');
-}catch(e){showToast('失败: '+e.message,'error')}
-finally{btn.disabled=false;btn.textContent='生成封面'}
+async function restartScheduler(){
+  const saved = await saveConfig(true);
+  if(!saved)return;
+  try{
+    const response = await fetch('/api/scheduler/restart', { method: 'POST' });
+    const data = await response.json();
+    if(!data.ok && data.running === undefined)throw new Error(data.message || '重启失败');
+    await loadSchedulerStatus();
+    showToast('定时任务已保存并重启', 'success');
+  }catch(error){
+    showToast(`重启失败: ${error.message}`, 'error');
+  }
 }
 
-function downloadResult(){
-if(!currentResultBase64)return;
-const a=document.createElement('a');a.href=currentResultBase64;a.download='cover.png';a.click();
+function showWebhookUrl(){
+  document.getElementById('webhookUrl').textContent = `${window.location.origin}/webhook/emby`;
 }
 
-loadConfig();
+async function initialize(){
+  showWebhookUrl();
+  renderNotifyTypes();
+  renderStyleCards();
+  renderLibrarySelector();
+  renderTitleEditors();
+  try{
+    await loadConfig(true);
+  }catch(error){
+    showToast(`加载配置失败: ${error.message}`, 'error');
+  }
+  await loadLibraries(true);
+  await loadSchedulerStatus();
+}
+
+initialize();
 </script>
 </body>
 </html>

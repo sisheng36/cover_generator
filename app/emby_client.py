@@ -56,7 +56,12 @@ class EmbyClient:
             "Limit": limit,
             "SortBy": sort_by,
             "SortOrder": "Descending",
-            "Fields": "Id,Name,Type,ImageTags,BackdropImageTags,PrimaryImageTag,PrimaryImageItemId,Path",
+            "Fields": (
+                "Id,Name,Type,Path,ProviderIds,"
+                "ImageTags,BackdropImageTags,PrimaryImageTag,PrimaryImageItemId,"
+                "ParentBackdropImageTags,ParentBackdropItemId,"
+                "SeriesPrimaryImageTag,SeriesId"
+            ),
             "Recursive": True,
         }
         if item_types:
@@ -72,7 +77,8 @@ class EmbyClient:
         item_id = item.get("Id")
         if not item_id:
             return None
-        primary_url, backdrop_url = None, None
+        primary_url, backdrop_url, parent_backdrop_url, series_primary_url = None, None, None, None
+
         primary_tag = item.get("ImageTags", {}).get("Primary")
         if primary_tag:
             primary_url = f"/emby/Items/{item_id}/Images/Primary?tag={primary_tag}"
@@ -81,12 +87,31 @@ class EmbyClient:
             ref_tag = item.get("PrimaryImageTag")
             if ref_id and ref_tag:
                 primary_url = f"/emby/Items/{ref_id}/Images/Primary?tag={ref_tag}"
-        backdrop_tags = item.get("BackdropImageTags")
+
+        backdrop_tags = item.get("BackdropImageTags") or []
         if backdrop_tags:
             backdrop_url = f"/emby/Items/{item_id}/Images/Backdrop/0?tag={backdrop_tags[0]}"
+
+        parent_backdrop_tags = item.get("ParentBackdropImageTags") or []
+        parent_backdrop_item_id = item.get("ParentBackdropItemId")
+        if parent_backdrop_tags and parent_backdrop_item_id:
+            parent_backdrop_url = (
+                f"/emby/Items/{parent_backdrop_item_id}/Images/Backdrop/0?tag={parent_backdrop_tags[0]}"
+            )
+
+        series_primary_tag = item.get("SeriesPrimaryImageTag")
+        series_id = item.get("SeriesId")
+        if series_primary_tag and series_id:
+            series_primary_url = f"/emby/Items/{series_id}/Images/Primary?tag={series_primary_tag}"
+
+        if item.get("Type") == "Episode":
+            if use_primary:
+                return series_primary_url or primary_url or parent_backdrop_url or backdrop_url
+            return parent_backdrop_url or backdrop_url or series_primary_url or primary_url
+
         if use_primary:
-            return primary_url or backdrop_url
-        return backdrop_url or primary_url
+            return primary_url or parent_backdrop_url or backdrop_url
+        return parent_backdrop_url or backdrop_url or primary_url
 
     def download_image(self, api_path: str, save_path: str) -> Optional[str]:
         try:

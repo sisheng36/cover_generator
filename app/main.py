@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from .styles.style_single_1 import create_style_single_1
 from .styles.style_single_2 import create_style_single_2
 from .styles.style_multi_1 import create_style_multi_1
-from .config_manager import load_config, save_config
+from .config_manager import load_config, save_config, normalize_config
 from .notifier import handle_webhook
 from .emby_client import EmbyClient
 from .cover_service import generate_cover_for_library
@@ -43,7 +43,7 @@ def _scheduled_generate():
         config.get("emby_api_key", ""),
     )
     libs = client.get_libraries()
-    selected = config.get("scheduled_libraries", [])
+    selected = config.get("selected_libraries") or config.get("scheduled_libraries", [])
     if selected:
         libs = [lib for lib in libs if lib.get("Id") in selected]
     if not libs:
@@ -67,6 +67,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="EmbyTool", version="2.0.0", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
+app.mount("/images", StaticFiles(directory=Path(__file__).parent.parent / "images"), name="images")
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -79,17 +80,19 @@ async def index():
 
 @app.get("/api/config")
 async def get_config():
-    return JSONResponse(app_config)
+    return JSONResponse(normalize_config(app_config))
 
 
 @app.post("/api/config")
 async def update_config(request: Request):
     global app_config
     body = await request.json()
-    app_config.update(body)
+    merged = dict(app_config)
+    merged.update(body)
+    app_config = normalize_config(merged)
     save_config(app_config)
     sched_start(app_config, _scheduled_generate)
-    return JSONResponse({"ok": True, "message": "配置已保存"})
+    return JSONResponse({"ok": True, "message": "配置已保存", "config": app_config})
 
 
 # ── Emby 媒体库管理 ──
