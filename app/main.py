@@ -14,13 +14,12 @@ from .styles.style_multi_1 import create_style_multi_1
 from .config_manager import load_config, save_config, normalize_config
 from .notifier import handle_webhook
 from .emby_client import EmbyClient
-from .cover_service import generate_cover_for_library
+from .cover_service import generate_cover_for_library, resolve_font_path
 from .scheduler import start as sched_start, stop as sched_stop, is_running as sched_running, get_next_run as sched_next_run
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("EmbyTool")
 
-FONTS_DIR = Path(__file__).parent.parent / "fonts"
 UPLOAD_DIR = Path("/data/uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 OUTPUT_DIR = Path("/data/covers_output")
@@ -190,10 +189,7 @@ async def generate_cover(
     with open(input_path, "wb") as f:
         f.write(await image.read())
 
-    zh_font = str(FONTS_DIR / "zh_font.ttf")
-    en_font = str(FONTS_DIR / "en_font.ttf")
-    zh_font_multi = str(FONTS_DIR / "zh_font_multi_1.ttf")
-    en_font_multi = str(FONTS_DIR / "en_font_multi_1.otf")
+    fonts = resolve_font_path(app_config)
 
     cfg = {
         "show_item_count": show_item_count,
@@ -204,14 +200,14 @@ async def generate_cover(
     try:
         if cover_style == "single_1":
             result = create_style_single_1(
-                str(input_path), (title_zh, title_en), (zh_font, en_font),
+                str(input_path), (title_zh, title_en), (fonts["zh"], fonts["en"]),
                 font_size=(zh_font_size, en_font_size),
                 blur_size=blur_size, color_ratio=color_ratio,
                 item_count=item_count, config=cfg,
             )
         elif cover_style == "single_2":
             result = create_style_single_2(
-                str(input_path), (title_zh, title_en), (zh_font, en_font),
+                str(input_path), (title_zh, title_en), (fonts["zh"], fonts["en"]),
                 font_size=(zh_font_size, en_font_size),
                 blur_size=blur_size, color_ratio=color_ratio,
                 item_count=item_count, config=cfg,
@@ -224,7 +220,7 @@ async def generate_cover(
                 if not target.exists():
                     shutil.copy(input_path, target)
             result = create_style_multi_1(
-                str(lib_dir), (title_zh, title_en), (zh_font_multi, en_font_multi),
+                str(lib_dir), (title_zh, title_en), (fonts["zh_multi"], fonts["en_multi"]),
                 font_size=(zh_font_size, en_font_size),
                 is_blur=False, blur_size=blur_size, color_ratio=color_ratio,
                 item_count=item_count, config=cfg,

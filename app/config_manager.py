@@ -15,6 +15,8 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "sort_by": "Random",
     "covers_input": "/data/input",
     "covers_output": "/data/covers_output",
+    "zh_font_path": "",
+    "en_font_path": "",
     "custom_library_titles_enabled": False,
     "library_title_overrides": {},
     "single_use_primary": True,
@@ -152,6 +154,8 @@ def normalize_config(raw_config: Dict[str, Any] | None) -> Dict[str, Any]:
     config["sort_by"] = str(config.get("sort_by") or DEFAULT_CONFIG["sort_by"])
     config["covers_input"] = str(config.get("covers_input") or DEFAULT_CONFIG["covers_input"]).strip()
     config["covers_output"] = str(config.get("covers_output") or DEFAULT_CONFIG["covers_output"]).strip()
+    config["zh_font_path"] = str(config.get("zh_font_path") or DEFAULT_CONFIG["zh_font_path"]).strip()
+    config["en_font_path"] = str(config.get("en_font_path") or DEFAULT_CONFIG["en_font_path"]).strip()
 
     config["custom_library_titles_enabled"] = _coerce_bool(
         config.get("custom_library_titles_enabled"),

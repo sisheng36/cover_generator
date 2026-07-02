@@ -151,6 +151,92 @@ def _prepare_source_dir(config: dict, library_name: str, library_id: str) -> Pat
     return source_dir
 
 
+def _resolve_item_types(library: Dict) -> Optional[str]:
+    collection_type = str(library.get("CollectionType") or "").strip().lower()
+    if collection_type == "movies":
+        return "Movie"
+    if collection_type == "tvshows":
+        return "Series"
+    return None
+
+
+def _logical_item_key(item: Dict) -> str:
+    item_type = str(item.get("Type") or "").strip()
+    if item_type in {"Episode", "Season"} and item.get("SeriesId"):
+        return f"series:{item['SeriesId']}"
+
+    primary_ref_id = item.get("PrimaryImageItemId")
+    primary_tag = item.get("PrimaryImageTag")
+    if primary_ref_id and primary_tag:
+        return f"primary:{primary_ref_id}:{primary_tag}"
+
+    provider_ids = item.get("ProviderIds") or {}
+    for provider in ("Tmdb", "Imdb", "Tvdb"):
+        value = str(provider_ids.get(provider) or "").strip()
+        if value:
+            return f"{provider.lower()}:{value}"
+
+    item_id = str(item.get("Id") or "").strip()
+    if item_id:
+        return f"item:{item_id}"
+
+    return f"name:{str(item.get('Name') or '').strip().lower()}"
+
+
+def _collect_candidate_items(
+    client: EmbyClient,
+    library: Dict,
+    settings: dict,
+    required: int,
+    sort_by: str,
+) -> list[tuple[Dict, Optional[str]]]:
+    item_types = _resolve_item_types(library)
+    page_size = max(required * 4, 50)
+    max_scan = max(required * 30, 200)
+    start_index = 0
+    unique_candidates: list[tuple[Dict, Optional[str]]] = []
+    fallback_candidates: list[tuple[Dict, Optional[str]]] = []
+    seen_logical_keys: set[str] = set()
+
+    while start_index < max_scan and len(unique_candidates) < required:
+        items = client.get_library_items(
+            library_id=str(library.get("Id") or library.get("ItemId") or ""),
+            limit=page_size,
+            sort_by=sort_by,
+            item_types=item_types,
+            start_index=start_index,
+        )
+        if not items:
+            break
+
+        for item in items:
+            has_local_poster = bool(_local_poster_candidates(item))
+            img_url = client.get_image_url(item, settings["use_primary"])
+            if not (has_local_poster or img_url):
+                continue
+
+            candidate = (item, img_url)
+            fallback_candidates.append(candidate)
+
+            logical_key = _logical_item_key(item)
+            if logical_key in seen_logical_keys:
+                continue
+
+            seen_logical_keys.add(logical_key)
+            unique_candidates.append(candidate)
+            if len(unique_candidates) >= required:
+                break
+
+        if len(items) < page_size:
+            break
+        start_index += page_size
+
+    if unique_candidates:
+        return unique_candidates[:required]
+
+    return fallback_candidates[:required]
+
+
 def generate_cover_for_library(
     client: EmbyClient,
     library: Dict,
@@ -176,25 +262,9 @@ def generate_cover_for_library(
     try:
         multi_style = style.startswith("multi")
         required = 9 if multi_style else 1
-        items = client.get_library_items(
-            library_id=library_id,
-            limit=required * 4,
-            sort_by=sort_by,
-        )
-        if not items:
-            return {"ok": False, "message": "媒体库没有可用的项目"}
-
-        valid = []
-        for item in items:
-            has_local_poster = bool(_local_poster_candidates(item))
-            img_url = client.get_image_url(item, settings["use_primary"])
-            if has_local_poster or img_url:
-                valid.append((item, img_url))
-            if len(valid) >= required:
-                break
-
+        valid = _collect_candidate_items(client, library, settings, required, sort_by)
         if not valid:
-            return {"ok": False, "message": "没有找到可用的本地 poster.jpg 或远程图片"}
+            return {"ok": False, "message": "媒体库没有可用的项目"}
 
         if sort_by == "Random":
             random.shuffle(valid)

@@ -47,6 +47,7 @@ class EmbyClient:
     def get_library_items(
         self, library_id: str, limit: int = 10,
         sort_by: str = "Random", item_types: str = None,
+        start_index: int = 0,
     ) -> List[Dict]:
         uid = self.get_user_id()
         if not uid:
@@ -63,6 +64,7 @@ class EmbyClient:
                 "SeriesPrimaryImageTag,SeriesId"
             ),
             "Recursive": True,
+            "StartIndex": start_index,
         }
         if item_types:
             params["IncludeItemTypes"] = item_types

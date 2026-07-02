@@ -131,15 +131,6 @@ h1{font-size:30px;font-weight:700;margin-bottom:8px}
           <div class="hint">用于入库通知中的剧集评分、类型和剧情简介。</div>
         </div>
         <div class="form-group">
-          <label for="sort_by">媒体排序方式</label>
-          <select id="sort_by">
-            <option value="Random">随机</option>
-            <option value="DateCreated">最新入库</option>
-            <option value="PremiereDate">最新发行</option>
-          </select>
-          <div class="hint">不填写时默认使用“随机”。</div>
-        </div>
-        <div class="form-group">
           <label for="covers_input">下载的海报图片目录</label>
           <input id="covers_input" placeholder="/data/input">
           <div class="hint">未填写时默认使用 <code>/data/input</code>，生成时会优先落地到这个目录，并优先尝试本地 <code>poster.jpg</code>。</div>
@@ -176,10 +167,6 @@ h1{font-size:30px;font-weight:700;margin-bottom:8px}
           <input id="scheduler_cron" placeholder="0 4 * * *">
           <div class="hint">默认 <code>0 4 * * *</code>，表示每天凌晨 4 点执行。</div>
         </div>
-        <div class="form-group">
-          <label>定时更新目标库</label>
-          <div class="empty-note">直接使用“要选择的库”的勾选结果。</div>
-        </div>
       </div>
       <div class="actions">
         <button class="btn btn-secondary" onclick="restartScheduler()">保存并重启定时任务</button>
@@ -214,6 +201,31 @@ h1{font-size:30px;font-weight:700;margin-bottom:8px}
     <div id="cover-tab-settings" class="card cover-tab" style="display:none">
       <h2>风格设置</h2>
       <div class="settings-grid">
+        <div class="card" style="margin:0;padding:18px;grid-column:1/-1">
+          <h3>字体设置</h3>
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="sort_by">媒体排序方式</label>
+              <select id="sort_by">
+                <option value="Random">随机</option>
+                <option value="DateCreated">最新入库</option>
+                <option value="PremiereDate">最新发行</option>
+              </select>
+              <div class="hint">用于控制生成封面时优先选哪些媒体图片作为海报来源。</div>
+            </div>
+            <div class="form-group">
+              <label for="zh_font_path">中文字体文件路径</label>
+              <input id="zh_font_path" placeholder="/data/fonts/zh.ttf">
+              <div class="hint">支持本地已挂载的 <code>.ttf</code>、<code>.otf</code>、<code>.ttc</code> 文件；留空时使用内置中文字体。</div>
+            </div>
+            <div class="form-group">
+              <label for="en_font_path">英文字体文件路径</label>
+              <input id="en_font_path" placeholder="/data/fonts/en.otf">
+              <div class="hint">单图和多图风格都会复用这里的英文标题字体；留空时使用内置英文字体。</div>
+            </div>
+          </div>
+        </div>
+
         <div class="card" style="margin:0;padding:18px">
           <h3>单图风格</h3>
           <div class="form-grid">
@@ -570,6 +582,7 @@ function applyConfigToForm(){
   const cfg = state.config;
   [
     'emby_server_url','emby_api_key','tmdb_api_key','sort_by','covers_input','covers_output',
+    'zh_font_path','en_font_path',
     'single_blur_size','single_color_ratio','single_zh_font_size','single_en_font_size',
     'single_badge_size_ratio','multi_blur_size','multi_color_ratio','multi_zh_font_size',
     'multi_en_font_size','multi_badge_size_ratio','scheduler_cron','tg_token','tg_chat_id',
@@ -645,6 +658,8 @@ function collectConfigPayload(){
     sort_by: document.getElementById('sort_by').value || 'Random',
     covers_input: document.getElementById('covers_input').value.trim(),
     covers_output: document.getElementById('covers_output').value.trim(),
+    zh_font_path: document.getElementById('zh_font_path').value.trim(),
+    en_font_path: document.getElementById('en_font_path').value.trim(),
     selected_libraries: state.config.selected_libraries || [],
     cover_style: state.config.cover_style || 'single_1',
     custom_library_titles_enabled: document.getElementById('custom_library_titles_enabled').checked,
