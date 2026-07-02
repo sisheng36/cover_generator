@@ -37,6 +37,9 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "notify_types": [],
     "aggregate_enabled": True,
     "aggregate_time": 15,
+    "scheduler_enabled": False,
+    "scheduler_cron": "0 4 * * *",
+    "scheduled_libraries": [],
 }
 
 

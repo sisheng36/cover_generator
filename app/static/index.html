@@ -99,6 +99,30 @@ code{background:#eef2ff;padding:2px 8px;border-radius:4px;font-size:13px}
 <button class="btn btn-primary" onclick="generateAll()" id="btnGenerateAll">生成全部库封面</button>
 </div>
 </div>
+<div class="card" id="schedulerCard">
+<h2>定时任务</h2>
+<div class="form-group checkbox">
+<input id="scheduler_enabled" type="checkbox" onchange="onSchedulerToggle()">
+<label for="scheduler_enabled">启用定时封面更新</label>
+</div>
+<div class="form-row">
+<div class="form-group">
+<label>Cron 表达式</label>
+<input id="scheduler_cron" placeholder="0 4 * * *" onchange="onSchedulerChange()">
+<div class="hint">分 时 日 月 周 &nbsp;<code>0 4 * * *</code> = 每天凌晨4点</div>
+</div>
+<div class="form-group">
+<label>定时更新目标库</label>
+<select id="scheduled_libraries" multiple style="height:auto;min-height:80px" onchange="onSchedulerChange()">
+</select>
+<div class="hint">不选则更新所有库，按住 Ctrl/Cmd 多选</div>
+</div>
+</div>
+<div id="schedulerStatus" style="display:none;margin-top:8px;padding:8px 12px;border-radius:8px;font-size:13px"></div>
+<div class="actions">
+<button class="btn btn-outline btn-sm" onclick="restartScheduler()">重启定时任务</button>
+</div>
+</div>
 </div>
 
 <div id="tab-cover" class="tab-content">
@@ -228,6 +252,7 @@ blur_size,color_ratio,zh_font_size,en_font_size,
 show_item_count,badge_style,covers_output,
 notification_enabled,tg_token,tg_chat_id,tmdb_api_key,
 aggregate_enabled,aggregate_time,
+scheduler_enabled,scheduler_cron,
 };
 for(const[id,key]of Object.entries(map)){
 const el=document.getElementById(id);if(!el)continue;
@@ -235,6 +260,8 @@ if(el.type==='checkbox')el.checked=!!cfg[key];
 else el.value=cfg[key]??'';
 }
 loadLibraries();
+loadSchedulerStatus();
+loadScheduledLibs();
 }catch(e){showToast('加载配置失败: '+e.message,'error')}
 }
 
@@ -245,21 +272,24 @@ const ids=[
 'show_item_count','badge_style','covers_output',
 'notification_enabled','tg_token','tg_chat_id','tmdb_api_key',
 'aggregate_enabled','aggregate_time',
+'scheduler_enabled','scheduler_cron',
 ];
 const cfg={};
 for(const id of ids){
 const el=document.getElementById(id);if(!el)continue;
 cfg[id]=el.type==='checkbox'?el.checked:el.value;
 }
-const sel=document.getElementById('notify_types');
-cfg.notify_types=Array.from(sel.selectedOptions).map(o=>o.value);
+for(const selId of['notify_types','scheduled_libraries']){
+const sel=document.getElementById(selId);
+if(sel)cfg[selId]=Array.from(sel.selectedOptions).map(o=>o.value);
+}
 for(const k of['blur_size','color_ratio','zh_font_size','en_font_size','aggregate_time']){
 if(cfg[k]!=='')cfg[k]=Number(cfg[k]);
 }
 try{
 const r=await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(cfg)});
 const res=await r.json();
-if(res.ok){showToast('配置已保存','success');loadLibraries()}
+if(res.ok){showToast('配置已保存','success');loadLibraries();loadSchedulerStatus()}
 else showToast('保存失败: '+res.message,'error');
 }catch(e){showToast('保存失败: '+e.message,'error')}
 }
@@ -280,9 +310,60 @@ el.innerHTML=data.libraries.map(lib=>
 <span class="type">${lib.type||'?'}</span>
 </div>`
 ).join('');
+populateSchedulerLibs(data.libraries);
 }catch(e){
 el.innerHTML='<div style="text-align:center;color:#999;padding:40px">连接 Emby 失败: '+e.message+'</div>';
 }
+}
+
+function populateSchedulerLibs(libs){
+const sel=document.getElementById('scheduled_libraries');
+sel.innerHTML=libs.map(l=>`<option value="${l.id}">${l.name}</option>`).join('');
+loadScheduledLibs();
+}
+
+async function loadScheduledLibs(){
+try{
+const r=await fetch('/api/config');
+const cfg=await r.json();
+const selected=cfg.scheduled_libraries||[];
+const sel=document.getElementById('scheduled_libraries');
+Array.from(sel.options).forEach(o=>{o.selected=selected.includes(o.value)});
+}catch(e){}
+}
+
+async function loadSchedulerStatus(){
+try{
+const r=await fetch('/api/scheduler/status');
+const s=await r.json();
+const el=document.getElementById('schedulerStatus');
+if(s.running){
+el.style.display='block';
+el.className='status-bar success';
+el.innerHTML=`⏰ 定时任务运行中 &nbsp;|&nbsp; 下次执行: <strong>${s.next_run||'未知'}</strong>`;
+}else{
+el.style.display='block';
+el.className='status-bar info';
+el.textContent='⏸️ 定时任务未运行';
+}
+}catch(e){}
+}
+
+function onSchedulerToggle(){
+saveConfig();
+}
+
+function onSchedulerChange(){
+saveConfig();
+}
+
+async function restartScheduler(){
+try{
+const r=await fetch('/api/scheduler/restart',{method:'POST'});
+const s=await r.json();
+showToast('定时任务已重启','success');
+loadSchedulerStatus();
+}catch(e){showToast('重启失败: '+e.message,'error')}
 }
 
 function toggleLib(id){

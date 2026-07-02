@@ -15,6 +15,7 @@ from .config_manager import load_config, save_config
 from .notifier import handle_webhook
 from .emby_client import EmbyClient
 from .cover_service import generate_cover_for_library
+from .scheduler import start as sched_start, stop as sched_stop, is_running as sched_running, get_next_run as sched_next_run
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("EmbyTool")
@@ -35,12 +36,32 @@ def _new_client() -> EmbyClient:
     )
 
 
+def _scheduled_generate():
+    config = load_config()
+    client = EmbyClient(
+        config.get("emby_server_url", ""),
+        config.get("emby_api_key", ""),
+    )
+    libs = client.get_libraries()
+    selected = config.get("scheduled_libraries", [])
+    if selected:
+        libs = [lib for lib in libs if lib.get("Id") in selected]
+    if not libs:
+        logger.warning("定时任务：没有可用的媒体库")
+        return
+    for lib in libs:
+        result = generate_cover_for_library(client, lib, config)
+        logger.info(f"定时任务 [{lib['Name']}] {result['message']}")
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global app_config
     app_config = load_config()
+    sched_start(app_config, _scheduled_generate)
     logger.info("EmbyTool 已启动")
     yield
+    sched_stop()
     logger.info("EmbyTool 已停止")
 
 
@@ -67,6 +88,7 @@ async def update_config(request: Request):
     body = await request.json()
     app_config.update(body)
     save_config(app_config)
+    sched_start(app_config, _scheduled_generate)
     return JSONResponse({"ok": True, "message": "配置已保存"})
 
 
@@ -209,6 +231,27 @@ async def generate_cover(
     except Exception as e:
         logger.exception("封面生成失败")
         return JSONResponse({"ok": False, "message": str(e)}, status_code=500)
+
+
+@app.get("/api/scheduler/status")
+async def scheduler_status():
+    return JSONResponse({
+        "running": sched_running(),
+        "next_run": sched_next_run(),
+        "enabled": app_config.get("scheduler_enabled", False),
+        "cron": app_config.get("scheduler_cron", ""),
+    })
+
+
+@app.post("/api/scheduler/restart")
+async def scheduler_restart():
+    global app_config
+    sched_start(app_config, _scheduled_generate)
+    return JSONResponse({
+        "ok": True,
+        "running": sched_running(),
+        "next_run": sched_next_run(),
+    })
 
 
 @app.get("/api/health")
