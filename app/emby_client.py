@@ -105,7 +105,7 @@ class EmbyClient:
     def upload_library_image(self, library_id: str, image_data: bytes) -> bool:
         try:
             url = f"{self.base_url}/Items/{library_id}/Images/Primary?api_key={self.api_key}"
-            headers = {"Content-Type": "image/jpeg"}
+            headers = {"Content-Type": "image/png"}
             resp = requests.post(url, data=image_data, headers=headers, timeout=30)
             if resp.status_code in (200, 204):
                 logger.info(f"封面上传成功: {library_id}")
