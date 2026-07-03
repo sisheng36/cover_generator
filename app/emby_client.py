@@ -75,6 +75,21 @@ class EmbyClient:
             return data.get("Items", [])
         return []
 
+    def get_item(self, item_id: str) -> Optional[Dict]:
+        if not item_id:
+            return None
+        return self._get(
+            f"/Items/{item_id}",
+            {
+                "Fields": (
+                    "Id,Name,Type,Path,ProviderIds,"
+                    "ImageTags,BackdropImageTags,PrimaryImageTag,PrimaryImageItemId,"
+                    "ParentBackdropImageTags,ParentBackdropItemId,"
+                    "SeriesPrimaryImageTag,SeriesId"
+                )
+            },
+        )
+
     def get_image_url(self, item: Dict, use_primary: bool = False) -> Optional[str]:
         item_id = item.get("Id")
         if not item_id:
