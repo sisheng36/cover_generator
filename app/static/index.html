@@ -17,16 +17,25 @@
   --green-soft:#ecfdf5;
   --red:#dc2626;
   --red-soft:#fef2f2;
+  --orange:#ff7a1a;
+  --orange-soft:#fff2e8;
   --shadow:0 16px 36px rgba(15,23,42,.08);
+  /* Bing wallpaper fallback — overridden by JS at runtime */
+  --bing-wallpaper: linear-gradient(135deg, #f5e6d3 0%, #e8d5b7 50%, #d4c4a8 100%);
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:"SF Pro Display","PingFang SC","Microsoft YaHei",sans-serif;background:linear-gradient(180deg,#f8fbff 0%,var(--bg) 100%);color:var(--text)}
+body{font-family:"SF Pro Display","PingFang SC","Microsoft YaHei",sans-serif;color:var(--text);
+  background:
+    linear-gradient(180deg, rgba(248,251,255,.92), rgba(237,242,247,.92)),
+    var(--bing-wallpaper) center / cover no-repeat fixed;
+}
 .container{max-width:1200px;margin:0 auto;padding:28px 16px 40px}
 h1{font-size:30px;font-weight:700;margin-bottom:8px}
 .page-subtitle{color:var(--muted);margin-bottom:24px;font-size:14px}
 .top-tabs,.sub-tabs{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
 .tab-btn,.sub-tab-btn{border:none;border-radius:999px;padding:11px 18px;background:#fff;color:var(--muted);cursor:pointer;box-shadow:var(--shadow);font-size:14px;font-weight:600;transition:.2s}
 .tab-btn.active,.sub-tab-btn.active{background:var(--text);color:#fff}
+#page-cover .sub-tab-btn.active{background:var(--orange);color:#fff;box-shadow:0 6px 18px rgba(255,122,26,.28)}
 .page{display:none}
 .page.active{display:block}
 .card{background:var(--card);border:1px solid rgba(219,227,239,.8);border-radius:22px;padding:22px;box-shadow:var(--shadow);margin-bottom:18px}
@@ -62,7 +71,7 @@ h1{font-size:30px;font-weight:700;margin-bottom:8px}
 .style-card img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:12px;display:block}
 .style-card .title{font-size:15px;font-weight:700;margin-top:10px}
 .style-card .desc{font-size:12px;color:var(--muted);margin-top:4px}
-.library-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.library-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
 .library-pick{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:#fcfdff}
 .library-pick .meta{flex:1}
 .library-pick .name{font-size:14px;font-weight:700}
@@ -81,7 +90,7 @@ h1{font-size:30px;font-weight:700;margin-bottom:8px}
 .result-item{padding:10px 0;border-bottom:1px solid #eef2f7;font-size:13px}
 .result-item:last-child{border-bottom:none}
 .result-item strong{margin-right:8px}
-.notify-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.notify-list{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
 .checkbox-item{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:14px;background:#fcfdff;font-size:14px}
 .upload-area{border:2px dashed var(--line);border-radius:18px;padding:34px 18px;text-align:center;cursor:pointer;background:#fbfdff;transition:.2s}
 .upload-area:hover{border-color:var(--blue);background:#f8fbff}
@@ -94,7 +103,14 @@ h1{font-size:30px;font-weight:700;margin-bottom:8px}
 .toast.show{opacity:1}
 .toast.success{background:var(--green)}
 .toast.error{background:var(--red)}
+@media (max-width: 1200px){
+  .library-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .notify-list{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
 @media (max-width: 900px){
+  .form-grid,.form-grid.three,.style-grid,.library-grid,.notify-list,.settings-grid,.title-editor{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (max-width: 560px){
   .form-grid,.form-grid.three,.style-grid,.library-grid,.notify-list,.settings-grid,.title-editor{grid-template-columns:1fr}
 }
 </style>
@@ -121,24 +137,28 @@ h1{font-size:30px;font-weight:700;margin-bottom:8px}
           <div class="hint">不填写时无法拉取媒体库和更新封面。</div>
         </div>
         <div class="form-group">
-          <label class="required" for="emby_api_key">API Key</label>
+          <label for="emby_api_key">API Key</label>
           <input id="emby_api_key" type="password" placeholder="Emby API Key">
           <div class="hint">请填写可访问媒体库与图片接口的 Key。</div>
         </div>
-        <div class="form-group">
+        <div class="form-group" style="grid-column:1/-1">
+          <div class="form-grid" style="gap:16px">
+            <div class="form-group">
+              <label for="covers_input">下载的海报图片目录</label>
+              <input id="covers_input" placeholder="/data/input">
+              <div class="hint">未填写时默认使用 <code>/data/input</code>，生成时会优先落地到这个目录，并优先尝试本地 <code>poster.jpg</code>。</div>
+            </div>
+            <div class="form-group">
+              <label for="covers_output">生成的封面图片目录</label>
+              <input id="covers_output" placeholder="/data/covers_output">
+              <div class="hint">未填写时默认使用 <code>/data/covers_output</code>，手动上传生成时的临时文件会放在该目录下的 <code>tmp/</code>。</div>
+            </div>
+          </div>
+        </div>
+        <div class="form-group full">
           <label for="tmdb_api_key">TMDB API Key</label>
           <input id="tmdb_api_key" type="password" placeholder="未填写时剧集通知不会补充 TMDB 信息">
           <div class="hint">用于入库通知中的剧集评分、类型和剧情简介。</div>
-        </div>
-        <div class="form-group">
-          <label for="covers_input">下载的海报图片目录</label>
-          <input id="covers_input" placeholder="/data/input">
-          <div class="hint">未填写时默认使用 <code>/data/input</code>，生成时会优先落地到这个目录，并优先尝试本地 <code>poster.jpg</code>。</div>
-        </div>
-        <div class="form-group">
-          <label for="covers_output">生成的封面图片目录</label>
-          <input id="covers_output" placeholder="/data/covers_output">
-          <div class="hint">未填写时默认使用 <code>/data/covers_output</code>，手动上传生成时的临时文件会放在该目录下的 <code>tmp/</code>。</div>
         </div>
       </div>
     </div>
@@ -202,7 +222,7 @@ h1{font-size:30px;font-weight:700;margin-bottom:8px}
       <h2>风格设置</h2>
       <div class="settings-grid">
         <div class="card" style="margin:0;padding:18px;grid-column:1/-1">
-          <h3>字体设置</h3>
+          <h3>媒体排序方式</h3>
           <div class="form-grid">
             <div class="form-group">
               <label for="sort_by">媒体排序方式</label>
@@ -213,6 +233,12 @@ h1{font-size:30px;font-weight:700;margin-bottom:8px}
               </select>
               <div class="hint">用于控制生成封面时优先选哪些媒体图片作为海报来源。</div>
             </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin:0;padding:18px;grid-column:1/-1">
+          <h3>字体设置</h3>
+          <div class="form-grid">
             <div class="form-group">
               <label for="zh_font_path">中文字体文件路径</label>
               <input id="zh_font_path" placeholder="/data/fonts/zh.ttf">
@@ -237,7 +263,7 @@ h1{font-size:30px;font-weight:700;margin-bottom:8px}
               </select>
               <div class="hint">默认优先竖版海报，没找到时再回退到背景图。</div>
             </div>
-            <div class="form-group">
+            <div class="form-group full">
               <label for="single_blur_size">模糊强度</label>
               <input id="single_blur_size" type="number" min="0" max="200" placeholder="50">
               <div class="hint">留空默认 50。</div>
@@ -297,7 +323,7 @@ h1{font-size:30px;font-weight:700;margin-bottom:8px}
                 <option value="true">开启</option>
               </select>
             </div>
-            <div class="form-group">
+            <div class="form-group full">
               <label for="multi_blur_size">模糊强度</label>
               <input id="multi_blur_size" type="number" min="0" max="200" placeholder="50">
               <div class="hint">留空默认 50。</div>
@@ -542,11 +568,11 @@ function renderTitleEditors(){
         <div class="library-name">${escapeHtml(lib.name)}</div>
         <div class="form-group" style="gap:4px">
           <label>自定义中文</label>
-          <input data-title-lib-id="${lib.id}" data-title-field="zh" value="${escapeHtmlAttr(current.zh || '')}" ${enabled ? '' : 'disabled'} placeholder="留空则使用媒体库名称">
+          <input data-title-lib-id="${lib.id}" data-title-field="zh" value="${escapeHtmlAttr(current.zh || '')}" ${enabled ? '' : 'disabled'} placeholder="自定义中文">
         </div>
         <div class="form-group" style="gap:4px">
           <label>自定义英文</label>
-          <input data-title-lib-id="${lib.id}" data-title-field="en" value="${escapeHtmlAttr(current.en || '')}" ${enabled ? '' : 'disabled'} placeholder="可不填">
+          <input data-title-lib-id="${lib.id}" data-title-field="en" value="${escapeHtmlAttr(current.en || '')}" ${enabled ? '' : 'disabled'} placeholder="自定义英文">
         </div>
       </div>
     `;
@@ -817,6 +843,92 @@ function showWebhookUrl(){
   document.getElementById('webhookUrl').textContent = `${window.location.origin}/webhook/emby`;
 }
 
+// ========== Bing 每日壁纸 ==========
+// 参考实现：浏览器通过 CORS 代理拉取 https://www.bing.com/HPImageArchive.aspx，
+// 用 Image() 预校验可访问性后写入 CSS 变量 --bing-wallpaper。
+// 默认开启；获取失败时回落到 :root 默认渐变背景。
+const BING_WALLPAPER = {
+  cacheKey: 'bing-wallpaper-cache',
+  api: 'https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=zh-CN',
+  proxies: [
+    (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+    (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  ],
+};
+
+function bingTodayKey(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function bingApplyWallpaper(value){
+  document.documentElement.style.setProperty('--bing-wallpaper', value);
+}
+
+function bingReadCache(){
+  try{
+    const raw = localStorage.getItem(BING_WALLPAPER.cacheKey);
+    if(!raw)return null;
+    const data = JSON.parse(raw);
+    if(data && typeof data.url === 'string' && data.url)return data;
+  }catch(e){ /* ignore */ }
+  return null;
+}
+
+function bingWriteCache(entry){
+  try{ localStorage.setItem(BING_WALLPAPER.cacheKey, JSON.stringify(entry)); }catch(e){ /* quota */ }
+}
+
+function bingProbeImage(url){
+  return new Promise((resolve) => {
+    const img = new Image();
+    let done = false;
+    const finish = (ok) => { if(done)return; done = true; resolve(ok); };
+    img.onload = () => finish(true);
+    img.onerror = () => finish(false);
+    setTimeout(() => finish(false), 6000);
+    img.src = url;
+  });
+}
+
+async function bingFetchToday(){
+  let lastErr = null;
+  for(const proxify of BING_WALLPAPER.proxies){
+    const proxyUrl = proxify(BING_WALLPAPER.api);
+    try{
+      const res = await fetch(proxyUrl, { cache: 'no-store' });
+      if(!res.ok){ lastErr = `HTTP ${res.status}`; continue; }
+      const data = await res.json();
+      const img = data && data.images && data.images[0];
+      if(!img || !img.url){ lastErr = 'no image in response'; continue; }
+      const fullUrl = `https://www.bing.com${img.url}`;
+      const ok = await bingProbeImage(fullUrl);
+      if(!ok){ lastErr = 'image probe failed'; continue; }
+      return { date: bingTodayKey(), url: fullUrl, copyright: img.copyright || '' };
+    }catch(e){
+      lastErr = e;
+      continue;
+    }
+  }
+  console.warn('[bing-wallpaper] all proxies failed, using CSS fallback:', lastErr);
+  return null;
+}
+
+async function initBingWallpaper(){
+  // 1. 今天已缓存且仍可访问 → 直接应用
+  const cached = bingReadCache();
+  if(cached && cached.date === bingTodayKey()){
+    const ok = await bingProbeImage(cached.url);
+    if(ok){ bingApplyWallpaper(`url("${cached.url}")`); return; }
+  }
+  // 2. 否则拉取新的；失败保留 :root 渐变
+  const fresh = await bingFetchToday();
+  if(fresh){
+    bingApplyWallpaper(`url("${fresh.url}")`);
+    bingWriteCache(fresh);
+  }
+}
+
 async function initialize(){
   showWebhookUrl();
   renderNotifyTypes();
@@ -830,6 +942,8 @@ async function initialize(){
   }
   await loadLibraries(true);
   await loadSchedulerStatus();
+  // Bing 壁纸不阻塞主流程
+  initBingWallpaper();
 }
 
 initialize();
