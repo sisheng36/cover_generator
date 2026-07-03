@@ -4,3 +4,10 @@ __pycache__
 data/
 .env
 .git
+cover_generator/
+mediaservermsg/
+images/multi_1.jpg
+images/plugin.webp
+images/single_1.jpg
+images/single_2.jpg
+images/style_4.jpeg
