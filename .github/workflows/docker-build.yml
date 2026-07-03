@@ -33,16 +33,37 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Docker meta
+      - name: Prepare Docker metadata
         id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha,format=short
+        shell: bash
+        run: |
+          image="${REGISTRY}/${IMAGE_NAME,,}"
+          short_sha="${GITHUB_SHA::7}"
+          tags=("${image}:sha-${short_sha}")
+          labels=(
+            "org.opencontainers.image.source=${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}"
+            "org.opencontainers.image.revision=${GITHUB_SHA}"
+          )
+
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            tags+=("${image}:latest")
+          fi
+
+          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+            major_minor="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+            tags+=("${image}:${version}" "${image}:${major_minor}")
+            labels+=("org.opencontainers.image.version=${version}")
+          fi
+
+          {
+            echo "tags<<EOF"
+            printf '%s\n' "${tags[@]}"
+            echo "EOF"
+            echo "labels<<EOF"
+            printf '%s\n' "${labels[@]}"
+            echo "EOF"
+          } >> "${GITHUB_OUTPUT}"
 
       - name: Build & push
         uses: docker/build-push-action@v6
