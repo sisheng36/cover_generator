@@ -87,7 +87,6 @@ h1{font-size:30px;font-weight:700;margin-bottom:8px}
 .library-pick{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid var(--glass-border);border-radius:16px;background:var(--glass-soft);-webkit-backdrop-filter:blur(12px) saturate(160%);backdrop-filter:blur(12px) saturate(160%)}
 .library-pick .meta{flex:1}
 .library-pick .name{font-size:14px;font-weight:700}
-.library-pick .type{display:inline-block;font-size:12px;color:var(--muted);margin-top:4px;background:#eef2f7;padding:2px 8px;border-radius:999px}
 .summary-chip{display:inline-flex;align-items:center;padding:8px 12px;border-radius:999px;background:rgba(238,242,255,.7);color:#1d4ed8;font-size:12px;font-weight:600;margin:0 8px 8px 0;border:1px solid var(--glass-border);-webkit-backdrop-filter:blur(10px) saturate(160%);backdrop-filter:blur(10px) saturate(160%)}
 .title-editor-list{display:grid;gap:12px}
 .title-editor{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:12px;padding:14px;border:1px solid var(--glass-border);border-radius:16px;background:var(--glass-soft);-webkit-backdrop-filter:blur(12px) saturate(160%);backdrop-filter:blur(12px) saturate(160%)}
@@ -554,7 +553,6 @@ function renderLibrarySelector(){
       <input type="checkbox" value="${lib.id}" ${selected.has(lib.id) ? 'checked' : ''} onchange="toggleSelectedLibrary('${lib.id}', this.checked)">
       <div class="meta">
         <div class="name">${escapeHtml(lib.name)}</div>
-        <div class="type">${escapeHtml(lib.type || '未知类型')}</div>
       </div>
     </label>
   `).join('');
