@@ -133,7 +133,7 @@ def _format_telegram_payload(title: str, text: str, limit: Optional[int] = None)
 def _resolve_tmdb_image(tmdb_info: dict, item_type: str, prefer_backdrop: bool = False) -> Optional[str]:
     if not tmdb_info:
         return None
-    if item_type == "TV" and prefer_backdrop:
+    if prefer_backdrop:
         path = tmdb_info.get("backdrop_path") or tmdb_info.get("poster_path")
     else:
         path = tmdb_info.get("poster_path") or tmdb_info.get("backdrop_path")
@@ -165,6 +165,31 @@ def _resolve_overview_line(overview: str) -> str:
     return f"📝 剧情: {text or '暂无剧情'}"
 
 
+def _resolve_tmdb_rating_line(tmdb_info: Optional[dict]) -> Optional[str]:
+    if not tmdb_info:
+        return None
+
+    vote_average = tmdb_info.get("vote_average")
+    vote_count = tmdb_info.get("vote_count")
+
+    try:
+        score = float(vote_average)
+    except (TypeError, ValueError):
+        return None
+
+    if score <= 0:
+        return None
+
+    rating_line = f"⭐ TMDB评分: {score:.1f}/10"
+    try:
+        votes = int(vote_count)
+    except (TypeError, ValueError):
+        votes = 0
+    if votes > 0:
+        rating_line += f" ({votes}人评分)"
+    return rating_line
+
+
 def _download_emby_image(event_info: dict, server_url: str, api_key: str) -> Optional[Tuple[bytes, str]]:
     if not server_url or not api_key:
         return None
@@ -173,18 +198,19 @@ def _download_emby_image(event_info: dict, server_url: str, api_key: str) -> Opt
         return None
     try:
         client = EmbyClient(server_url, api_key)
-        api_path = client.get_image_url(item, use_primary=event_info.get("item_type") == "TV")
+        api_path = client.get_image_url(item, use_primary=False)
         if not api_path:
             fresh_item = client.get_item(event_info.get("item_id", ""))
             if fresh_item:
-                api_path = client.get_image_url(fresh_item, use_primary=event_info.get("item_type") == "TV")
+                api_path = client.get_image_url(fresh_item, use_primary=False)
         if not api_path:
             return None
         resp = requests.get(f"{server_url.rstrip('/')}{api_path}", headers={"X-Emby-Token": api_key}, timeout=30)
         if resp.status_code != 200 or not resp.content:
             logger.warning(f"Emby 图片下载失败 {api_path} -> {resp.status_code}")
             return None
-        return resp.content, "poster.jpg"
+        image_name = "backdrop.jpg" if "/Backdrop/" in api_path else "poster.jpg"
+        return resp.content, image_name
     except Exception as e:
         logger.warning(f"Emby 图片下载异常: {e}")
         return None
@@ -322,6 +348,9 @@ def build_tv_message(events: List[dict], tmdb_api_key: str) -> Tuple[str, str, O
     title = _build_library_title(show_name, "TV", _resolve_year(first, tmdb_info))
 
     texts = [_resolve_episode_line(events)]
+    tmdb_rating_line = _resolve_tmdb_rating_line(tmdb_info)
+    if tmdb_rating_line:
+        texts.append(tmdb_rating_line)
 
     overview = ""
     if is_multi and tmdb_info:
@@ -339,7 +368,7 @@ def build_tv_message(events: List[dict], tmdb_api_key: str) -> Tuple[str, str, O
 
     texts = _append_time_if_needed(texts)
 
-    image_url = _resolve_tmdb_image(tmdb_info, "TV", prefer_backdrop=is_multi)
+    image_url = _resolve_tmdb_image(tmdb_info, "TV", prefer_backdrop=True)
 
     return title, "\n".join(texts), image_url
 
@@ -378,6 +407,9 @@ def build_generic_message(event_info: dict, tmdb_api_key: str = "") -> Tuple[str
     percentage = event_info.get("percentage")
     if percentage:
         texts.append(f"进度：{round(float(percentage), 2)}%")
+    tmdb_rating_line = _resolve_tmdb_rating_line(tmdb_info)
+    if tmdb_rating_line:
+        texts.append(tmdb_rating_line)
     overview = event_info.get("overview")
     if not overview and tmdb_info:
         overview = tmdb_info.get("overview")
@@ -391,7 +423,7 @@ def build_generic_message(event_info: dict, tmdb_api_key: str = "") -> Tuple[str
     if event_action == "library.new" or texts:
         texts = _append_time_if_needed(texts)
 
-    image_url = event_info.get("image_url") or _resolve_tmdb_image(tmdb_info, item_type, prefer_backdrop=item_type == "TV")
+    image_url = event_info.get("image_url") or _resolve_tmdb_image(tmdb_info, item_type, prefer_backdrop=True)
     return title, "\n".join(texts), image_url
 
 

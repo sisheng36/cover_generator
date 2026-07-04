@@ -194,7 +194,9 @@ async def generate_cover(
     ext = Path(image.filename).suffix if image.filename else ".jpg"
     input_path = _temp_dir() / f"input{ext}"
     with open(input_path, "wb") as f:
-        f.write(await image.read())
+        await image.seek(0)
+        shutil.copyfileobj(image.file, f)
+    await image.close()
 
     fonts = resolve_font_path(app_config)
 

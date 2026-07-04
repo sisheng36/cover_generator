@@ -4,10 +4,10 @@ import random
 import base64
 from io import BytesIO
 from collections import Counter
-import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageOps
 
 from .badge_drawer import draw_badge
+from .image_utils import add_film_grain, blend_with_color
 
 logger = logging.getLogger(__name__)
 
@@ -62,12 +62,6 @@ def find_dominant_vibrant_colors(image, num_colors=5):
 def darken_color(color, factor=0.7):
     r, g, b = color
     return (int(r * factor), int(g * factor), int(b * factor))
-
-def add_film_grain(image, intensity=0.05):
-    img_array = np.array(image)
-    noise = np.random.normal(0, intensity * 255, img_array.shape)
-    img_array = np.clip(img_array + noise, 0, 255).astype(np.uint8)
-    return Image.fromarray(img_array)
 
 def align_image_right(img, canvas_size):
     canvas_width, canvas_height = canvas_size
@@ -138,8 +132,10 @@ def create_style_single_2(image_path, title, font_path, font_size=(1,1), blur_si
         split_top = 0.55
         split_bottom = 0.4
 
-        fg_img_original = Image.open(image_path).convert("RGB")
-        fg_img = align_image_right(fg_img_original, canvas_size)
+        with Image.open(image_path) as source_image:
+            original_img = source_image.convert("RGB")
+
+        fg_img = align_image_right(original_img, canvas_size)
 
         vibrant_colors = find_dominant_vibrant_colors(fg_img)
         soft_colors = [(237, 159, 77), (255, 183, 197), (186, 225, 255), (255, 223, 186), (202, 231, 200), (245, 203, 255)]
@@ -153,17 +149,16 @@ def create_style_single_2(image_path, title, font_path, font_size=(1,1), blur_si
 
         shadow_color = darken_color(bg_color, 0.5)
 
-        bg_img_original = Image.open(image_path).convert("RGB")
-        bg_img = ImageOps.fit(bg_img_original, canvas_size, method=Image.LANCZOS).filter(ImageFilter.GaussianBlur(radius=int(blur_size)))
+        bg_img = ImageOps.fit(original_img, canvas_size, method=Image.Resampling.LANCZOS).filter(
+            ImageFilter.GaussianBlur(radius=int(blur_size))
+        )
 
         bg_color = darken_color(bg_color, 0.85)
 
-        bg_img_array = np.array(bg_img, dtype=float)
-        bg_color_array = np.array([[bg_color]], dtype=float)
-        blended_bg = np.clip(bg_img_array * (1 - float(color_ratio)) + bg_color_array * float(color_ratio), 0, 255).astype(np.uint8)
-        blended_bg_img = Image.fromarray(blended_bg)
-
-        blended_bg_img = add_film_grain(blended_bg_img, intensity=0.05)
+        blended_bg_img = add_film_grain(
+            blend_with_color(bg_img, bg_color, color_ratio),
+            intensity=0.05,
+        )
 
         diagonal_mask = create_diagonal_mask(canvas_size, split_top, split_bottom)
         canvas = fg_img.copy()

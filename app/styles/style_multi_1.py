@@ -7,10 +7,10 @@ import io
 import colorsys
 from pathlib import Path
 from collections import Counter
-import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageOps
 
 from .badge_drawer import draw_badge
+from .image_utils import add_film_grain, blend_with_color, create_horizontal_gradient_mask
 
 logger = logging.getLogger(__name__)
 
@@ -80,12 +80,6 @@ def darken_color(color, factor=0.7):
     r, g, b = color
     return (int(r * factor), int(g * factor), int(b * factor))
 
-def add_film_grain(image, intensity=0.05):
-    img_array = np.array(image)
-    noise = np.random.normal(0, intensity * 255, img_array.shape)
-    img_array = np.clip(img_array + noise, 0, 255).astype(np.uint8)
-    return Image.fromarray(img_array)
-
 def add_shadow(img, offset=(5, 5), shadow_color=(0, 0, 0, 100), blur_radius=3):
     shadow_width = img.width + offset[0] + blur_radius * 2
     shadow_height = img.height + offset[1] + blur_radius * 2
@@ -98,9 +92,9 @@ def add_shadow(img, offset=(5, 5), shadow_color=(0, 0, 0, 100), blur_radius=3):
     return Image.alpha_composite(shadow, result)
 
 def draw_text_on_image(image, text, position, font_path, default_font_path, font_size, fill_color=(255, 255, 255, 255), shadow=False, shadow_color=None, shadow_offset=10, shadow_alpha=75):
-    img_copy = image.copy()
-    text_layer = Image.new('RGBA', img_copy.size, (255, 255, 255, 0))
-    shadow_layer = Image.new('RGBA', img_copy.size, (0, 0, 0, 0))
+    base = image if image.mode == "RGBA" else image.convert("RGBA")
+    text_layer = Image.new('RGBA', base.size, (255, 255, 255, 0))
+    shadow_layer = Image.new('RGBA', base.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(text_layer)
     shadow_draw = ImageDraw.Draw(shadow_layer)
     font = ImageFont.truetype(font_path, font_size)
@@ -115,12 +109,12 @@ def draw_text_on_image(image, text, position, font_path, default_font_path, font
             shadow_draw.text((position[0] + offset, position[1] + offset), text, font=font, fill=shadow_color_with_alpha)
     draw.text(position, text, font=font, fill=fill_color)
     blurred_shadow = shadow_layer.filter(ImageFilter.GaussianBlur(radius=shadow_offset))
-    combined = Image.alpha_composite(img_copy, blurred_shadow)
+    combined = Image.alpha_composite(base, blurred_shadow)
     return Image.alpha_composite(combined, text_layer)
 
 def draw_multiline_text_on_image(image, text, position, font_path, default_font_path, font_size, line_spacing=10, fill_color=(255, 255, 255, 255), shadow=False, shadow_color=None, shadow_offset=4, shadow_alpha=100):
-    img_copy = image.copy()
-    text_layer = Image.new('RGBA', img_copy.size, (255, 255, 255, 0))
+    base = image if image.mode == "RGBA" else image.convert("RGBA")
+    text_layer = Image.new('RGBA', base.size, (255, 255, 255, 0))
     draw = ImageDraw.Draw(text_layer)
     font = ImageFont.truetype(font_path, font_size)
     lines = text.split(" ")
@@ -136,7 +130,7 @@ def draw_multiline_text_on_image(image, text, position, font_path, default_font_
             for offset in range(3, shadow_offset + 1, 2):
                 draw.text((position[0] + offset, position[1] + offset), text, font=font, fill=shadow_color_with_alpha)
         draw.text(position, text, font=font, fill=fill_color)
-        return Image.alpha_composite(img_copy, text_layer), 1
+        return Image.alpha_composite(base, text_layer), 1
     x, y = position
     for i, line in enumerate(lines):
         current_y = y + i * (font_size + line_spacing)
@@ -144,15 +138,15 @@ def draw_multiline_text_on_image(image, text, position, font_path, default_font_
             for offset in range(3, shadow_offset + 1, 2):
                 draw.text((x + offset, current_y + offset), line, font=font, fill=shadow_color_with_alpha)
         draw.text((x, current_y), line, font=font, fill=fill_color)
-    return Image.alpha_composite(img_copy, text_layer), len(lines)
+    return Image.alpha_composite(base, text_layer), len(lines)
 
 def get_random_color(image_path):
     try:
-        img = Image.open(image_path)
-        width, height = img.size
-        random_x = random.randint(int(width * 0.5), int(width * 0.8))
-        random_y = random.randint(int(height * 0.5), int(height * 0.8))
-        pixel = img.getpixel((random_x, random_y))
+        with Image.open(image_path) as img:
+            width, height = img.size
+            random_x = random.randint(int(width * 0.5), int(width * 0.8))
+            random_y = random.randint(int(height * 0.5), int(height * 0.8))
+            pixel = img.getpixel((random_x, random_y))
         return pixel[:3] + (255,) if isinstance(pixel, tuple) else (pixel, pixel, pixel, 255)
     except Exception:
         return (random.randint(50, 200), random.randint(50, 200), random.randint(50, 200), 255)
@@ -190,14 +184,13 @@ def create_gradient_background(width, height, color=None):
     color2 = (r2, g2, b2, 255)
     left_image = Image.new("RGBA", (width, height), color1)
     right_image = Image.new("RGBA", (width, height), color2)
-    mask = Image.new("L", (width, height), 0)
-    mask_data = [int(255.0 * (x / width) ** 0.7) for y in range(height) for x in range(width)]
-    mask.putdata(mask_data)
+    mask = create_horizontal_gradient_mask((width, height), power=0.7)
     return Image.composite(right_image, left_image, mask)
 
 def get_poster_primary_color(image_path):
     try:
-        img = Image.open(image_path).resize((100, 150), Image.LANCZOS).convert('RGBA')
+        with Image.open(image_path) as source_image:
+            img = source_image.resize((100, 150), Image.Resampling.LANCZOS).convert('RGBA')
         pixels = list(img.getdata())
         filtered_pixels = [(r, g, b, 255) for r, g, b, a in pixels if a > 200 and not (r < 30 and g < 30 and b < 30) and not (r > 220 and g > 220 and b > 220)]
         if not filtered_pixels: filtered_pixels = [(p[0], p[1], p[2], 255) for p in pixels if p[3] > 100]
@@ -207,25 +200,22 @@ def get_poster_primary_color(image_path):
         return [(150, 100, 50, 255)]
 
 def create_blur_background(image_path, template_width, template_height, background_color, blur_size, color_ratio, lighten_gradient_strength=0.6):
-    original_img = Image.open(image_path).convert('RGB')
-    bg_img = ImageOps.fit(original_img.copy(), (template_width, template_height), method=Image.LANCZOS).filter(ImageFilter.GaussianBlur(radius=int(blur_size)))
+    with Image.open(image_path) as source_image:
+        original_img = source_image.convert('RGB')
+    bg_img = ImageOps.fit(
+        original_img,
+        (template_width, template_height),
+        method=Image.Resampling.LANCZOS,
+    ).filter(ImageFilter.GaussianBlur(radius=int(blur_size)))
 
     actual_color = darken_color(background_color, 0.85)
     bg_color = actual_color[:3]
-
-    bg_img_array = np.array(bg_img, dtype=float)
-    bg_color_array = np.array([[bg_color]], dtype=float)
-
-    blended_bg_array = np.clip(bg_img_array * (1 - float(color_ratio)) + bg_color_array * float(color_ratio), 0, 255).astype(np.uint8)
-
-    blended_bg_img = Image.fromarray(blended_bg_array, 'RGB').convert('RGBA')
+    blended_bg_img = blend_with_color(bg_img, bg_color, color_ratio).convert('RGBA')
 
     if lighten_gradient_strength > 0:
-        gradient_mask = Image.new("L", (template_width, template_height), 0)
-        draw_mask = ImageDraw.Draw(gradient_mask)
-        max_alpha = int(255 * np.clip(lighten_gradient_strength, 0.0, 1.0))
-        for x in range(template_width):
-            draw_mask.line([(x, 0), (x, template_height)], fill=int((x / template_width) * max_alpha))
+        max_alpha = int(255 * max(0.0, min(1.0, float(lighten_gradient_strength))))
+        gradient_mask = create_horizontal_gradient_mask((template_width, template_height), power=1.0)
+        gradient_mask = gradient_mask.point([int((value / 255) * max_alpha) for value in range(256)])
         lighten_layer = Image.new("RGBA", (template_width, template_height), (255, 255, 255, 0))
         lighten_layer.putalpha(gradient_mask)
         blended_bg_img = Image.alpha_composite(blended_bg_img, lighten_layer)
@@ -254,7 +244,8 @@ def create_style_multi_1(library_dir, title, font_path, font_size=(1,1), is_blur
         rows, cols, margin, corner_radius, rotation_angle, start_x, start_y, column_spacing = [POSTER_GEN_CONFIG[k] for k in ["ROWS", "COLS", "MARGIN", "CORNER_RADIUS", "ROTATION_ANGLE", "START_X", "START_Y", "COLUMN_SPACING"]]
         template_width, template_height = POSTER_GEN_CONFIG["CANVAS_WIDTH"], POSTER_GEN_CONFIG["CANVAS_HEIGHT"]
 
-        color_img = Image.open(first_image_path).convert("RGB")
+        with Image.open(first_image_path) as source_image:
+            color_img = source_image.convert("RGB")
         vibrant_colors = find_dominant_vibrant_colors(color_img)
         soft_colors = [(237, 159, 77), (255, 183, 197), (186, 225, 255), (255, 223, 186), (202, 231, 200), (245, 203, 255)]
 
@@ -281,7 +272,7 @@ def create_style_multi_1(library_dir, title, font_path, font_size=(1,1), is_blur
         cell_width, cell_height = POSTER_GEN_CONFIG["CELL_WIDTH"], POSTER_GEN_CONFIG["CELL_HEIGHT"]
         grouped_posters = [poster_files[i : i + rows] for i in range(0, len(poster_files), rows)]
 
-        result = colored_bg_img.copy()
+        result = colored_bg_img.convert("RGBA")
         for col_index, column_posters in enumerate(grouped_posters):
             if col_index >= cols: break
             column_x = start_x + col_index * column_spacing
@@ -290,7 +281,12 @@ def create_style_multi_1(library_dir, title, font_path, font_size=(1,1), is_blur
             column_image = Image.new("RGBA", (cell_width + shadow_extra, column_height + shadow_extra), (0, 0, 0, 0))
             for row_index, poster_path in enumerate(column_posters):
                 try:
-                    poster = ImageOps.fit(Image.open(poster_path), (cell_width, cell_height), method=Image.LANCZOS)
+                    with Image.open(poster_path) as poster_source:
+                        poster = ImageOps.fit(
+                            poster_source.convert("RGB"),
+                            (cell_width, cell_height),
+                            method=Image.Resampling.LANCZOS,
+                        )
                     if corner_radius > 0:
                         mask = Image.new("L", (cell_width, cell_height), 0)
                         ImageDraw.Draw(mask).rounded_rectangle([(0, 0), (cell_width, cell_height)], radius=corner_radius, fill=255)

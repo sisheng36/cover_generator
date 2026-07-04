@@ -43,10 +43,10 @@ def draw_badge(image, item_count, font_path, style='badge', size_ratio=0.12, bas
         else:
             badge_fill = (40, 40, 40, 180)
 
-        badge_layer = Image.new('RGBA', image.size, (0, 0, 0, 0))
+        badge_layer = Image.new('RGBA', (badge_width, badge_height), (0, 0, 0, 0))
         badge_draw = ImageDraw.Draw(badge_layer)
-        badge_draw.rounded_rectangle(badge_rect, radius=int(badge_height * 0.3), fill=badge_fill)
-        image = Image.alpha_composite(image, badge_layer)
+        badge_draw.rounded_rectangle((0, 0, badge_width, badge_height), radius=int(badge_height * 0.3), fill=badge_fill)
+        image.alpha_composite(badge_layer, dest=badge_pos)
 
         draw = ImageDraw.Draw(image)
         badge_center_x = badge_pos[0] + badge_width / 2
@@ -61,11 +61,11 @@ def draw_badge(image, item_count, font_path, style='badge', size_ratio=0.12, bas
 
         ribbon_fill = (250, 222, 135, 250)
 
-        ribbon_layer = Image.new('RGBA', image.size, (0, 0, 0, 0))
+        ribbon_layer = Image.new('RGBA', (ribbon_width, ribbon_width), (0, 0, 0, 0))
         ribbon_draw = ImageDraw.Draw(ribbon_layer)
         ribbon_draw.polygon([(0, 0), (ribbon_width, 0), (0, ribbon_width)], fill=ribbon_fill)
         ribbon_draw.polygon([(0, 0), (fold_size, 0), (0, fold_size)], fill=(0, 0, 0, 0))
-        image = Image.alpha_composite(image, ribbon_layer)
+        image.alpha_composite(ribbon_layer, dest=(0, 0))
 
         text_fill_color = (89, 52, 2, 245)
         text_shadow_color = (0, 0, 0, 80)
@@ -94,8 +94,6 @@ def draw_badge(image, item_count, font_path, style='badge', size_ratio=0.12, bas
         paste_x = paste_center_x - rotated_text.width // 2
         paste_y = paste_center_y - rotated_text.height // 2
 
-        text_final_layer = Image.new('RGBA', image.size, (0, 0, 0, 0))
-        text_final_layer.paste(rotated_text, (paste_x, paste_y))
-        image = Image.alpha_composite(image, text_final_layer)
+        image.alpha_composite(rotated_text, dest=(paste_x, paste_y))
 
     return image

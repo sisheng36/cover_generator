@@ -4,10 +4,10 @@ import random
 import base64
 from io import BytesIO
 from collections import Counter
-import numpy as np
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageOps
 
 from .badge_drawer import draw_badge
+from .image_utils import add_film_grain, blend_with_color
 
 logger = logging.getLogger(__name__)
 
@@ -69,12 +69,6 @@ def darken_color(color, factor=0.7):
     r, g, b = color
     return (int(r * factor), int(g * factor), int(b * factor))
 
-def add_film_grain(image, intensity=0.05):
-    img_array = np.array(image)
-    noise = np.random.normal(0, intensity * 255, img_array.shape)
-    img_array = np.clip(img_array + noise, 0, 255).astype(np.uint8)
-    return Image.fromarray(img_array)
-
 def crop_to_square(img):
     width, height = img.size
     size = min(width, height)
@@ -134,7 +128,8 @@ def create_style_single_1(image_path, title, font_path, font_size=(1,1), blur_si
         if not float(en_font_size_ratio) > 0: en_font_size_ratio = 1
 
         num_colors = 6
-        original_img = Image.open(image_path).convert("RGB")
+        with Image.open(image_path) as source_image:
+            original_img = source_image.convert("RGB")
 
         candidate_colors = find_dominant_macaron_colors(original_img, num_colors=num_colors)
         random.shuffle(candidate_colors)
@@ -153,34 +148,34 @@ def create_style_single_1(image_path, title, font_path, font_size=(1,1), blur_si
         base_color_for_badge = extracted_colors[0]
         card_colors = [extracted_colors[1], extracted_colors[2]]
 
-        bg_img = ImageOps.fit(original_img.copy(), canvas_size, method=Image.LANCZOS).filter(ImageFilter.GaussianBlur(radius=int(blur_size)))
-        bg_img_array = np.array(bg_img, dtype=float)
-        bg_color_array = np.array([[bg_color]], dtype=float)
-        blended_bg = np.clip(bg_img_array * (1 - float(color_ratio)) + bg_color_array * float(color_ratio), 0, 255).astype(np.uint8)
-        blended_bg_img = Image.fromarray(blended_bg)
-
-        blended_bg_img = add_film_grain(blended_bg_img, intensity=0.03)
+        bg_img = ImageOps.fit(original_img, canvas_size, method=Image.Resampling.LANCZOS).filter(
+            ImageFilter.GaussianBlur(radius=int(blur_size))
+        )
+        blended_bg_img = add_film_grain(
+            blend_with_color(bg_img, bg_color, color_ratio),
+            intensity=0.03,
+        )
 
         canvas = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
         canvas.paste(blended_bg_img)
 
         square_img = crop_to_square(original_img)
         card_size = int(canvas_size[1] * 0.7)
-        square_img = square_img.resize((card_size, card_size), Image.LANCZOS)
+        square_img = square_img.resize((card_size, card_size), Image.Resampling.LANCZOS)
 
         main_card = add_rounded_corners(square_img, radius=card_size//8).convert("RGBA")
 
-        aux_card1_bg = square_img.copy().filter(ImageFilter.GaussianBlur(radius=8))
-        aux_card1_array = np.array(aux_card1_bg, dtype=float)
-        card_color1_array = np.array([[card_colors[0]]], dtype=float)
-        blended_card1 = np.clip(aux_card1_array * 0.5 + card_color1_array * 0.5, 0, 255).astype(np.uint8)
-        aux_card1 = add_rounded_corners(Image.fromarray(blended_card1), radius=card_size//8).convert("RGBA")
+        aux_card1_bg = square_img.filter(ImageFilter.GaussianBlur(radius=8))
+        aux_card1 = add_rounded_corners(
+            blend_with_color(aux_card1_bg, card_colors[0], 0.5),
+            radius=card_size//8,
+        ).convert("RGBA")
 
-        aux_card2_bg = square_img.copy().filter(ImageFilter.GaussianBlur(radius=16))
-        aux_card2_array = np.array(aux_card2_bg, dtype=float)
-        card_color2_array = np.array([[card_colors[1]]], dtype=float)
-        blended_card2 = np.clip(aux_card2_array * 0.4 + card_color2_array * 0.6, 0, 255).astype(np.uint8)
-        aux_card2 = add_rounded_corners(Image.fromarray(blended_card2), radius=card_size//8).convert("RGBA")
+        aux_card2_bg = square_img.filter(ImageFilter.GaussianBlur(radius=16))
+        aux_card2 = add_rounded_corners(
+            blend_with_color(aux_card2_bg, card_colors[1], 0.6),
+            radius=card_size//8,
+        ).convert("RGBA")
 
         center_pos = (int(canvas_size[0] - canvas_size[1] * 0.5), int(canvas_size[1] * 0.5))
         rotation_angles = [36, 18, 0]
