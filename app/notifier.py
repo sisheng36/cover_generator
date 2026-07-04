@@ -530,6 +530,11 @@ def handle_webhook(data: dict, config: dict) -> str:
 
     dedupe_key = f"{event_info['server_name']}-{event_action}-{event_info['item_id']}"
     now = time.time()
+    # 惰性清理已过期的去重条目，避免 _dedupe_cache 随 (event, item_id) 单调增长泄漏内存。
+    if len(_dedupe_cache) > 512:
+        expired = [k for k, exp in _dedupe_cache.items() if exp <= now]
+        for k in expired:
+            _dedupe_cache.pop(k, None)
     if dedupe_key in _dedupe_cache and _dedupe_cache[dedupe_key] > now:
         return "duplicate"
     _dedupe_cache[dedupe_key] = now + DEDUPE_EXPIRATION

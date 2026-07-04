@@ -149,16 +149,20 @@ class EmbyClient:
             from PIL import Image
             from io import BytesIO
             import base64 as b64
-            img = Image.open(BytesIO(image_data))
-            if img.mode == "RGBA":
-                img = img.convert("RGB")
             buf = BytesIO()
-            img.save(buf, format="JPEG", quality=95)
-            body = b64.b64encode(buf.getvalue()).decode("utf-8")
+            try:
+                with Image.open(BytesIO(image_data)) as img:
+                    if img.mode == "RGBA":
+                        img = img.convert("RGB")
+                    img.save(buf, format="JPEG", quality=95)
+                body = b64.b64encode(buf.getvalue()).decode("utf-8")
+            finally:
+                buf.close()
 
             url = f"{self.base_url}/Items/{library_id}/Images/Primary"
             headers = {"X-Emby-Token": self.api_key, "Content-Type": "image/jpeg"}
             resp = requests.post(url, data=body, headers=headers, timeout=30)
+            del body
             if resp.status_code in (200, 204):
                 logger.info(f"封面上传成功: {library_id}")
                 return True

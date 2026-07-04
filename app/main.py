@@ -1,8 +1,11 @@
 import logging
 import base64
+import gc
 import shutil
 from pathlib import Path
 from contextlib import asynccontextmanager
+
+from PIL import Image
 
 from fastapi import FastAPI, Request, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -19,6 +22,9 @@ from .scheduler import start as sched_start, stop as sched_stop, is_running as s
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("EmbyTool")
+
+# 保持 Pillow 默认解压炸弹防御阈值，避免被超大源图击穿内存。
+Image.MAX_IMAGE_PIXELS = 89_000_000
 
 app_config: dict = {}
 
@@ -55,9 +61,13 @@ def _scheduled_generate():
     if not libs:
         logger.warning("定时任务：没有可用的媒体库")
         return
-    for lib in libs:
-        result = generate_cover_for_library(client, lib, config)
-        logger.info(f"定时任务 [{lib['Name']}] {result['message']}")
+    try:
+        for lib in libs:
+            result = generate_cover_for_library(client, lib, config)
+            logger.info(f"定时任务 [{lib['Name']}] {result['message']}")
+    finally:
+        # 定时任务跑完立刻归还 PIL 在 C 层分配的大块内存给系统。
+        gc.collect()
 
 
 @asynccontextmanager
@@ -149,7 +159,7 @@ async def generate_libraries(request: Request):
             result = {"ok": False, "message": f"内部异常: {e}"}
         results.append({"library": lib["Name"], **result})
         logger.info(f"[{lib['Name']}] {result['message']}")
-
+    gc.collect()
     return JSONResponse({"ok": True, "results": results})
 
 
@@ -170,7 +180,7 @@ async def generate_all():
         result = generate_cover_for_library(client, lib, app_config)
         results.append({"library": lib["Name"], **result})
         logger.info(f"[{lib['Name']}] {result['message']}")
-
+    gc.collect()
     return JSONResponse({"ok": True, "results": results})
 
 
@@ -240,13 +250,15 @@ async def generate_cover(
             return JSONResponse({"ok": False, "message": "封面生成失败"}, status_code=500)
 
         output_path = _output_dir() / "cover.png"
-        image_data = base64.b64decode(result)
         with open(output_path, "wb") as f:
-            f.write(image_data)
+            f.write(result)
 
+        image_b64 = base64.b64encode(result).decode("ascii")
+        del result
+        gc.collect()
         return JSONResponse({
             "ok": True,
-            "image_base64": f"data:image/png;base64,{result}",
+            "image_base64": f"data:image/png;base64,{image_b64}",
         })
     except Exception as e:
         logger.exception("封面生成失败")
@@ -277,6 +289,24 @@ async def scheduler_restart():
 @app.get("/api/health")
 async def health():
     return JSONResponse({"status": "ok"})
+
+
+@app.get("/api/mem")
+async def memory_status():
+    # 仅用于运维排查内存回归；不引入 psutil 等额外依赖。
+    try:
+        import resource
+        rss_kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
+        rss_mb = round(rss_kb / 1024.0, 1)
+    except Exception:
+        rss_mb = None
+    import sys
+    return JSONResponse({
+        "rss_mb": rss_mb,
+        "font_cache_size": len(__import__("app.styles.image_utils", fromlist=["_font_cache"])._font_cache),
+        "dedupe_cache_size": len(__import__("app.notifier", fromlist=["_dedupe_cache"])._dedupe_cache),
+        "pending_messages_keys": len(__import__("app.notifier", fromlist=["_pending_messages"])._pending_messages),
+    })
 
 
 @app.post("/webhook/emby")

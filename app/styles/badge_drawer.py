@@ -1,5 +1,6 @@
 from PIL import Image, ImageDraw, ImageFont
 import math
+from .image_utils import load_font
 
 def _darken_color(color, factor=0.7):
     if not color or len(color) < 3:
@@ -22,7 +23,7 @@ def draw_badge(image, item_count, font_path, style='badge', size_ratio=0.12, bas
     count_text = str(item_count)
 
     try:
-        badge_font = ImageFont.truetype(font_path, size=badge_font_size)
+        badge_font = load_font(font_path, size=badge_font_size)
     except Exception:
         badge_font = ImageFont.load_default(size=badge_font_size)
 

@@ -1,4 +1,3 @@
-import base64
 import logging
 import random
 import re
@@ -341,7 +340,8 @@ def generate_cover_for_library(
         if not result:
             return {"ok": False, "message": "封面生成失败"}
 
-        image_bytes = base64.b64decode(result)
+        image_bytes = result
+        del result
         upload_ok = client.upload_library_image(library_id, image_bytes)
 
         if config.get("covers_output"):
@@ -350,6 +350,7 @@ def generate_cover_for_library(
             out_path = out_dir / f"{_sanitize_name(library_name)}.jpg"
             with open(out_path, "wb") as f:
                 f.write(image_bytes)
+        del image_bytes
 
         if upload_ok:
             return {

@@ -1,13 +1,12 @@
 import logging
 import colorsys
 import random
-import base64
 from io import BytesIO
 from collections import Counter
-from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageOps
+from PIL import Image, ImageDraw, ImageFilter, ImageOps
 
 from .badge_drawer import draw_badge
-from .image_utils import add_film_grain, blend_with_color
+from .image_utils import add_film_grain, blend_with_color, load_font
 
 logger = logging.getLogger(__name__)
 
@@ -113,10 +112,14 @@ def create_shadow_mask(size, split_top=0.5, split_bottom=0.33, feather_size=40):
     draw.polygon([(top_x - 5, 0), (top_x - 5 + shadow_width, 0), (bottom_x - 5 + shadow_width, height), (bottom_x - 5, height)], fill=255)
     return mask.filter(ImageFilter.GaussianBlur(radius=feather_size//3))
 
-def image_to_base64(image):
+def image_to_bytes(image):
     buffer = BytesIO()
-    image.save(buffer, format="PNG", optimize=True)
-    return base64.b64encode(buffer.getvalue()).decode('utf-8')
+    try:
+        image.save(buffer, format="PNG", optimize=True)
+        return buffer.getvalue()
+    finally:
+        buffer.close()
+        image.close()
 
 def create_style_single_2(image_path, title, font_path, font_size=(1,1), blur_size=50, color_ratio=0.8, item_count=None, config=None):
     try:
@@ -159,6 +162,8 @@ def create_style_single_2(image_path, title, font_path, font_size=(1,1), blur_si
             blend_with_color(bg_img, bg_color, color_ratio),
             intensity=0.05,
         )
+        bg_img.close()
+        original_img.close()
 
         diagonal_mask = create_diagonal_mask(canvas_size, split_top, split_bottom)
         canvas = fg_img.copy()
@@ -167,9 +172,16 @@ def create_style_single_2(image_path, title, font_path, font_size=(1,1), blur_si
         temp_canvas = Image.new('RGB', canvas_size)
         temp_canvas.paste(canvas)
         temp_canvas.paste(shadow_layer, mask=shadow_mask)
+        fg_img.close()
+        shadow_layer.close()
+        shadow_mask.close()
         canvas = Image.composite(blended_bg_img, temp_canvas, diagonal_mask)
+        diagonal_mask.close()
+        blended_bg_img.close()
+        temp_canvas.close()
 
         canvas_rgba = canvas.convert('RGBA')
+        canvas.close()
         text_layer = Image.new('RGBA', canvas_size, (255, 255, 255, 0))
         shadow_layer = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
         shadow_draw = ImageDraw.Draw(shadow_layer)
@@ -179,8 +191,8 @@ def create_style_single_2(image_path, title, font_path, font_size=(1,1), blur_si
         left_area_center_y = canvas_size[1] // 2
         zh_font_size = int(canvas_size[1] * 0.17 * float(zh_font_size_ratio))
         en_font_size = int(canvas_size[1] * 0.07 * float(en_font_size_ratio))
-        zh_font = ImageFont.truetype(str(zh_font_path), zh_font_size)
-        en_font = ImageFont.truetype(str(en_font_path), en_font_size)
+        zh_font = load_font(zh_font_path, zh_font_size)
+        en_font = load_font(en_font_path, en_font_size)
 
         text_color = (255, 255, 255, 229)
         text_shadow_color = darken_color(bg_color, 0.8) + (75,)
@@ -203,8 +215,13 @@ def create_style_single_2(image_path, title, font_path, font_size=(1,1), blur_si
             draw.text((en_x, en_y), title_en, font=en_font, fill=text_color)
 
         blurred_shadow = shadow_layer.filter(ImageFilter.GaussianBlur(radius=shadow_offset))
+        shadow_layer.close()
         combined = Image.alpha_composite(canvas_rgba, blurred_shadow)
+        blurred_shadow.close()
+        prev = combined
         combined = Image.alpha_composite(combined, text_layer)
+        prev.close()
+        text_layer.close()
 
         if config and config.get("show_item_count", False) and item_count is not None:
             combined = combined.convert('RGBA')
@@ -215,7 +232,7 @@ def create_style_single_2(image_path, title, font_path, font_size=(1,1), blur_si
                 base_color=base_color_for_badge
             )
 
-        return image_to_base64(combined)
+        return image_to_bytes(combined)
 
     except Exception as e:
         logger.error(f"创建单图封面(style 2)时出错: {e}", exc_info=True)

@@ -1,13 +1,12 @@
 import logging
 import colorsys
 import random
-import base64
 from io import BytesIO
 from collections import Counter
-from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageOps
+from PIL import Image, ImageDraw, ImageFilter, ImageOps
 
 from .badge_drawer import draw_badge
-from .image_utils import add_film_grain, blend_with_color
+from .image_utils import add_film_grain, blend_with_color, load_font
 
 logger = logging.getLogger(__name__)
 
@@ -86,8 +85,16 @@ def add_rounded_corners(img, radius=30):
     draw = ImageDraw.Draw(mask)
     draw.rounded_rectangle([(0, 0), (width * factor, height * factor)], radius=radius * factor, fill=255)
     background = Image.new("RGBA", (width * factor, height * factor), (255, 255, 255, 0))
-    high_res_result = Image.composite(enlarged_img, background, mask)
-    return high_res_result.resize((width, height), Image.Resampling.LANCZOS)
+    try:
+        high_res_result = Image.composite(enlarged_img, background, mask)
+        result = high_res_result.resize((width, height), Image.Resampling.LANCZOS)
+    finally:
+        enlarged_img.close()
+        mask.close()
+        background.close()
+        if 'high_res_result' in locals():
+            high_res_result.close()
+    return result
 
 def add_shadow_and_rotate(canvas, img, angle, offset=(10, 10), radius=10, opacity=0.5, center_pos=None):
     width, height = img.size
@@ -100,21 +107,28 @@ def add_shadow_and_rotate(canvas, img, angle, offset=(10, 10), radius=10, opacit
     shadow.paste((0, 0, 0, int(255 * opacity)), (shadow_center[0], shadow_center[1], shadow_center[0] + width, shadow_center[1] + height), shadow_mask)
     shadow = shadow.filter(ImageFilter.GaussianBlur(radius))
     rotated_shadow = shadow.rotate(angle, Image.BICUBIC, expand=True)
+    shadow.close()
     shadow_width, shadow_height = rotated_shadow.size
     shadow_x = center_pos[0] - shadow_width // 2 + offset[0]
     shadow_y = center_pos[1] - shadow_height // 2 + offset[1]
     canvas.paste(rotated_shadow, (shadow_x, shadow_y), rotated_shadow)
+    rotated_shadow.close()
     rotated_img = img.rotate(angle, Image.BICUBIC, expand=True)
     img_width, img_height = rotated_img.size
     img_x = center_pos[0] - img_width // 2
     img_y = center_pos[1] - img_height // 2
     canvas.paste(rotated_img, (img_x, img_y), rotated_img)
+    rotated_img.close()
     return canvas
 
-def image_to_base64(image):
+def image_to_bytes(image):
     buffer = BytesIO()
-    image.save(buffer, format="PNG", optimize=True)
-    return base64.b64encode(buffer.getvalue()).decode('utf-8')
+    try:
+        image.save(buffer, format="PNG", optimize=True)
+        return buffer.getvalue()
+    finally:
+        buffer.close()
+        image.close()
 
 def create_style_single_1(image_path, title, font_path, font_size=(1,1), blur_size=50, color_ratio=0.8, item_count=None, config=None):
     try:
@@ -155,9 +169,11 @@ def create_style_single_1(image_path, title, font_path, font_size=(1,1), blur_si
             blend_with_color(bg_img, bg_color, color_ratio),
             intensity=0.03,
         )
+        bg_img.close()
 
         canvas = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
         canvas.paste(blended_bg_img)
+        blended_bg_img.close()
 
         square_img = crop_to_square(original_img)
         card_size = int(canvas_size[1] * 0.7)
@@ -170,12 +186,16 @@ def create_style_single_1(image_path, title, font_path, font_size=(1,1), blur_si
             blend_with_color(aux_card1_bg, card_colors[0], 0.5),
             radius=card_size//8,
         ).convert("RGBA")
+        aux_card1_bg.close()
 
         aux_card2_bg = square_img.filter(ImageFilter.GaussianBlur(radius=16))
         aux_card2 = add_rounded_corners(
             blend_with_color(aux_card2_bg, card_colors[1], 0.6),
             radius=card_size//8,
         ).convert("RGBA")
+        aux_card2_bg.close()
+        square_img.close()
+        original_img.close()
 
         center_pos = (int(canvas_size[0] - canvas_size[1] * 0.5), int(canvas_size[1] * 0.5))
         rotation_angles = [36, 18, 0]
@@ -184,8 +204,10 @@ def create_style_single_1(image_path, title, font_path, font_size=(1,1), blur_si
         cards_canvas = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
         for card, angle, shadow_config in zip([aux_card2, aux_card1, main_card], rotation_angles, shadow_configs):
             cards_canvas = add_shadow_and_rotate(cards_canvas, card, angle, **shadow_config, center_pos=center_pos)
+            card.close()
 
         canvas = Image.alpha_composite(canvas.convert("RGBA"), cards_canvas)
+        cards_canvas.close()
 
         text_layer = Image.new('RGBA', canvas_size, (255, 255, 255, 0))
         shadow_layer = Image.new("RGBA", canvas_size, (0, 0, 0, 0))
@@ -196,8 +218,8 @@ def create_style_single_1(image_path, title, font_path, font_size=(1,1), blur_si
         left_area_center_y = canvas_size[1] // 2
         zh_font_size = int(canvas_size[1] * 0.17 * float(zh_font_size_ratio))
         en_font_size = int(canvas_size[1] * 0.07 * float(en_font_size_ratio))
-        zh_font = ImageFont.truetype(zh_font_path, zh_font_size)
-        en_font = ImageFont.truetype(en_font_path, en_font_size)
+        zh_font = load_font(zh_font_path, zh_font_size)
+        en_font = load_font(en_font_path, en_font_size)
 
         text_color = (255, 255, 255, 229)
         text_shadow_color = darken_color(bg_color, 0.8) + (75,)
@@ -220,8 +242,13 @@ def create_style_single_1(image_path, title, font_path, font_size=(1,1), blur_si
             draw.text((en_x, en_y), title_en, font=en_font, fill=text_color)
 
         blurred_shadow = shadow_layer.filter(ImageFilter.GaussianBlur(radius=shadow_offset))
+        shadow_layer.close()
         combined = Image.alpha_composite(canvas, blurred_shadow)
+        blurred_shadow.close()
+        prev = combined
         combined = Image.alpha_composite(combined, text_layer)
+        prev.close()
+        text_layer.close()
 
         if config and config.get("show_item_count", False) and item_count is not None:
             combined = combined.convert('RGBA')
@@ -232,7 +259,7 @@ def create_style_single_1(image_path, title, font_path, font_size=(1,1), blur_si
                 base_color=base_color_for_badge
             )
 
-        return image_to_base64(combined)
+        return image_to_bytes(combined)
 
     except Exception as e:
         logger.error(f"创建单图封面(style 1)时出错: {e}", exc_info=True)

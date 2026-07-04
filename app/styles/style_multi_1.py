@@ -2,15 +2,14 @@ import logging
 import os
 import random
 import math
-import base64
 import io
 import colorsys
 from pathlib import Path
 from collections import Counter
-from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageOps
+from PIL import Image, ImageDraw, ImageFilter, ImageOps
 
 from .badge_drawer import draw_badge
-from .image_utils import add_film_grain, blend_with_color, create_horizontal_gradient_mask
+from .image_utils import add_film_grain, blend_with_color, create_horizontal_gradient_mask, load_font
 
 logger = logging.getLogger(__name__)
 
@@ -86,10 +85,14 @@ def add_shadow(img, offset=(5, 5), shadow_color=(0, 0, 0, 100), blur_radius=3):
     shadow = Image.new("RGBA", (shadow_width, shadow_height), (0, 0, 0, 0))
     shadow_layer = Image.new("RGBA", img.size, shadow_color)
     shadow.paste(shadow_layer, (blur_radius + offset[0], blur_radius + offset[1]))
+    shadow_layer.close()
     shadow = shadow.filter(ImageFilter.GaussianBlur(blur_radius))
     result = Image.new("RGBA", shadow.size, (0, 0, 0, 0))
     result.paste(img, (blur_radius, blur_radius), img if img.mode == "RGBA" else None)
-    return Image.alpha_composite(shadow, result)
+    out = Image.alpha_composite(shadow, result)
+    shadow.close()
+    result.close()
+    return out
 
 def draw_text_on_image(image, text, position, font_path, default_font_path, font_size, fill_color=(255, 255, 255, 255), shadow=False, shadow_color=None, shadow_offset=10, shadow_alpha=75):
     base = image if image.mode == "RGBA" else image.convert("RGBA")
@@ -97,7 +100,7 @@ def draw_text_on_image(image, text, position, font_path, default_font_path, font
     shadow_layer = Image.new('RGBA', base.size, (0, 0, 0, 0))
     draw = ImageDraw.Draw(text_layer)
     shadow_draw = ImageDraw.Draw(shadow_layer)
-    font = ImageFont.truetype(font_path, font_size)
+    font = load_font(font_path, font_size)
     if shadow:
         fill_color = (fill_color[0], fill_color[1], fill_color[2], 229)
         if shadow_color is None:
@@ -109,14 +112,21 @@ def draw_text_on_image(image, text, position, font_path, default_font_path, font
             shadow_draw.text((position[0] + offset, position[1] + offset), text, font=font, fill=shadow_color_with_alpha)
     draw.text(position, text, font=font, fill=fill_color)
     blurred_shadow = shadow_layer.filter(ImageFilter.GaussianBlur(radius=shadow_offset))
+    shadow_layer.close()
     combined = Image.alpha_composite(base, blurred_shadow)
-    return Image.alpha_composite(combined, text_layer)
+    blurred_shadow.close()
+    if base is not image:
+        base.close()
+    result = Image.alpha_composite(combined, text_layer)
+    combined.close()
+    text_layer.close()
+    return result
 
 def draw_multiline_text_on_image(image, text, position, font_path, default_font_path, font_size, line_spacing=10, fill_color=(255, 255, 255, 255), shadow=False, shadow_color=None, shadow_offset=4, shadow_alpha=100):
     base = image if image.mode == "RGBA" else image.convert("RGBA")
     text_layer = Image.new('RGBA', base.size, (255, 255, 255, 0))
     draw = ImageDraw.Draw(text_layer)
-    font = ImageFont.truetype(font_path, font_size)
+    font = load_font(font_path, font_size)
     lines = text.split(" ")
     if shadow:
         fill_color = (fill_color[0], fill_color[1], fill_color[2], 229)
@@ -130,7 +140,11 @@ def draw_multiline_text_on_image(image, text, position, font_path, default_font_
             for offset in range(3, shadow_offset + 1, 2):
                 draw.text((position[0] + offset, position[1] + offset), text, font=font, fill=shadow_color_with_alpha)
         draw.text(position, text, font=font, fill=fill_color)
-        return Image.alpha_composite(base, text_layer), 1
+        result = Image.alpha_composite(base, text_layer)
+        if base is not image:
+            base.close()
+        text_layer.close()
+        return result, 1
     x, y = position
     for i, line in enumerate(lines):
         current_y = y + i * (font_size + line_spacing)
@@ -138,7 +152,11 @@ def draw_multiline_text_on_image(image, text, position, font_path, default_font_
             for offset in range(3, shadow_offset + 1, 2):
                 draw.text((x + offset, current_y + offset), line, font=font, fill=shadow_color_with_alpha)
         draw.text((x, current_y), line, font=font, fill=fill_color)
-    return Image.alpha_composite(base, text_layer), len(lines)
+    result = Image.alpha_composite(base, text_layer)
+    if base is not image:
+        base.close()
+    text_layer.close()
+    return result, len(lines)
 
 def get_random_color(image_path):
     try:
@@ -185,7 +203,12 @@ def create_gradient_background(width, height, color=None):
     left_image = Image.new("RGBA", (width, height), color1)
     right_image = Image.new("RGBA", (width, height), color2)
     mask = create_horizontal_gradient_mask((width, height), power=0.7)
-    return Image.composite(right_image, left_image, mask)
+    try:
+        return Image.composite(right_image, left_image, mask)
+    finally:
+        left_image.close()
+        right_image.close()
+        mask.close()
 
 def get_poster_primary_color(image_path):
     try:
@@ -207,10 +230,12 @@ def create_blur_background(image_path, template_width, template_height, backgrou
         (template_width, template_height),
         method=Image.Resampling.LANCZOS,
     ).filter(ImageFilter.GaussianBlur(radius=int(blur_size)))
+    original_img.close()
 
     actual_color = darken_color(background_color, 0.85)
     bg_color = actual_color[:3]
     blended_bg_img = blend_with_color(bg_img, bg_color, color_ratio).convert('RGBA')
+    bg_img.close()
 
     if lighten_gradient_strength > 0:
         max_alpha = int(255 * max(0.0, min(1.0, float(lighten_gradient_strength))))
@@ -218,14 +243,25 @@ def create_blur_background(image_path, template_width, template_height, backgrou
         gradient_mask = gradient_mask.point([int((value / 255) * max_alpha) for value in range(256)])
         lighten_layer = Image.new("RGBA", (template_width, template_height), (255, 255, 255, 0))
         lighten_layer.putalpha(gradient_mask)
-        blended_bg_img = Image.alpha_composite(blended_bg_img, lighten_layer)
+        gradient_mask.close()
+        new_blended = Image.alpha_composite(blended_bg_img, lighten_layer)
+        blended_bg_img.close()
+        lighten_layer.close()
+        blended_bg_img = new_blended
 
-    return add_film_grain(blended_bg_img, intensity=0.03)
+    out = add_film_grain(blended_bg_img, intensity=0.03)
+    if out is not blended_bg_img:
+        blended_bg_img.close()
+    return out
 
-def image_to_base64(image):
+def image_to_bytes(image):
     buffer = io.BytesIO()
-    image.save(buffer, format="PNG", optimize=True)
-    return base64.b64encode(buffer.getvalue()).decode('utf-8')
+    try:
+        image.save(buffer, format="PNG", optimize=True)
+        return buffer.getvalue()
+    finally:
+        buffer.close()
+        image.close()
 
 def create_style_multi_1(library_dir, title, font_path, font_size=(1,1), is_blur=False, blur_size=50, color_ratio=0.8, item_count=None, config=None):
     try:
@@ -256,6 +292,7 @@ def create_style_multi_1(library_dir, title, font_path, font_size=(1,1), is_blur
 
         base_color_for_badge = blur_color
         gradient_color = get_poster_primary_color(first_image_path)
+        color_img.close()
 
         if is_blur:
           colored_bg_img = create_blur_background(first_image_path, template_width, template_height, blur_color, blur_size, color_ratio)
@@ -273,6 +310,7 @@ def create_style_multi_1(library_dir, title, font_path, font_size=(1,1), is_blur
         grouped_posters = [poster_files[i : i + rows] for i in range(0, len(poster_files), rows)]
 
         result = colored_bg_img.convert("RGBA")
+        colored_bg_img.close()
         for col_index, column_posters in enumerate(grouped_posters):
             if col_index >= cols: break
             column_x = start_x + col_index * column_spacing
@@ -292,10 +330,14 @@ def create_style_multi_1(library_dir, title, font_path, font_size=(1,1), is_blur
                         ImageDraw.Draw(mask).rounded_rectangle([(0, 0), (cell_width, cell_height)], radius=corner_radius, fill=255)
                         poster_with_corners = Image.new("RGBA", poster.size, (0, 0, 0, 0))
                         poster_with_corners.paste(poster, (0, 0), mask)
+                        poster.close()
+                        mask.close()
                         poster = poster_with_corners
                     poster_with_shadow = add_shadow(poster, offset=(20, 20), shadow_color=(0, 0, 0, 216), blur_radius=20)
+                    poster.close()
                     y_position = row_index * (cell_height + margin)
                     column_image.paste(poster_with_shadow, (0, y_position), poster_with_shadow)
+                    poster_with_shadow.close()
                 except Exception: continue
 
             rotation_canvas_size = int(math.sqrt((cell_width + shadow_extra) ** 2 + (column_height + shadow_extra) ** 2) * 1.5)
@@ -303,7 +345,9 @@ def create_style_multi_1(library_dir, title, font_path, font_size=(1,1), is_blur
             paste_x = (rotation_canvas_size - column_image.width) // 2
             paste_y = (rotation_canvas_size - column_image.height) // 2
             rotation_canvas.paste(column_image, (paste_x, paste_y), column_image)
+            column_image.close()
             rotated_column = rotation_canvas.rotate(rotation_angle, Image.BICUBIC, expand=True)
+            rotation_canvas.close()
 
             column_center_y = start_y + column_height // 2
             column_center_x = column_x
@@ -315,11 +359,15 @@ def create_style_multi_1(library_dir, title, font_path, font_size=(1,1), is_blur
             final_x = column_center_x - rotated_column.width // 2
             final_y = column_center_y - rotated_column.height // 2
             result.paste(rotated_column, (final_x, final_y), rotated_column)
+            rotated_column.close()
 
         random_color = get_random_color(poster_files[0]) if poster_files else (random.randint(50, 200), random.randint(50, 200), random.randint(50, 200), 255)
 
         text_shadow_color = darken_color(blur_color, 0.8)
+        prev = result
         result = draw_text_on_image(result, title_zh, (73.32, 427.34), zh_font_path, "ch.ttf", int(163 * float(zh_font_size_ratio)), shadow=is_blur, shadow_color=text_shadow_color)
+        if result is not prev:
+            prev.close()
 
         if title_en:
             base_font_size = 50 * float(en_font_size_ratio)
@@ -329,7 +377,10 @@ def create_style_multi_1(library_dir, title, font_path, font_size=(1,1), is_blur
             max_chars_per_line = max(len(word) for word in words) if words else 0
             font_size = base_font_size * (10 / max(max_chars_per_line, word_count * 3)) ** 0.8 if max_chars_per_line > 10 or word_count > 3 else base_font_size
             font_size = max(font_size, 30)
+            prev = result
             result, line_count = draw_multiline_text_on_image(result, title_en, (124.68, 624.55), en_font_path, "en.otf", int(font_size), line_spacing, shadow=is_blur, shadow_color=text_shadow_color)
+            if result is not prev:
+                prev.close()
             color_block_height = base_font_size + line_spacing + (line_count - 1) * (int(font_size) + line_spacing)
             result = draw_color_block(result, (84.38, 620.06), (21.51, color_block_height), random_color)
 
@@ -342,7 +393,7 @@ def create_style_multi_1(library_dir, title, font_path, font_size=(1,1), is_blur
                 base_color=base_color_for_badge
             )
 
-        return image_to_base64(result)
+        return image_to_bytes(result)
 
     except Exception as e:
         logger.error(f"创建多图封面时出错: {e}", exc_info=True)
