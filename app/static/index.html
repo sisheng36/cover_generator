@@ -41,6 +41,7 @@ body{font-family:"SF Pro Display","PingFang SC","Microsoft YaHei",sans-serif;col
 .container{max-width:1200px;margin:0 auto;padding:28px 16px 40px}
 h1{font-size:30px;font-weight:700;margin-bottom:8px}
 .page-subtitle{color:var(--muted);margin-bottom:24px;font-size:14px}
+.app-version{margin-left:10px;padding-left:10px;border-left:1px solid var(--glass-divider);color:var(--muted);font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
 .top-tabs,.sub-tabs{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
 .tab-btn,.sub-tab-btn{border:1px solid var(--glass-border);border-radius:999px;padding:11px 18px;background:var(--glass-strong);color:var(--muted);cursor:pointer;box-shadow:var(--shadow);font-size:14px;font-weight:600;transition:.2s;-webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%)}
 .tab-btn.active,.sub-tab-btn.active{background:var(--text);color:#fff}
@@ -129,7 +130,7 @@ h1{font-size:30px;font-weight:700;margin-bottom:8px}
 <body>
 <div class="container">
   <h1>EmbyTool</h1>
-  <p class="page-subtitle">Emby 媒体库封面生成与入库通知配置</p>
+  <p class="page-subtitle">Emby 媒体库封面生成与入库通知配置<span id="appVersion" class="app-version"></span></p>
 
   <div class="top-tabs">
     <button class="tab-btn active" data-page="basic" onclick="switchPage('basic')">基础设置</button>
@@ -944,6 +945,24 @@ async function initBingWallpaper(){
   }
 }
 
+async function loadAppVersion(){
+  const el = document.getElementById('appVersion');
+  if(!el)return;
+  try{
+    const response = await fetch('/api/version');
+    if(!response.ok)throw new Error('version request failed');
+    const data = await response.json();
+    const raw = (data && typeof data.version === 'string') ? data.version.trim() : '';
+    if(!raw)return;
+    // tag 触发时构建写入的是 "X.Y.Z"，前面拼回用户标签里使用的 "v"。
+    // main 或自定义文案（例如 "Development version"）原样展示。
+    const display = /^\d+(\.\d+){1,2}([-+].*)?$/.test(raw) ? `v${raw}` : raw;
+    el.textContent = display;
+  }catch(error){
+    // 静默失败：版本号缺失不应阻塞首页正常使用。
+  }
+}
+
 async function initialize(){
   showWebhookUrl();
   renderNotifyTypes();
@@ -957,6 +976,8 @@ async function initialize(){
   }
   await loadLibraries(true);
   await loadSchedulerStatus();
+  // 版本号独立请求，不阻塞其它初始化流程
+  loadAppVersion();
   // Bing 壁纸不阻塞主流程
   initBingWallpaper();
 }

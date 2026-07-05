@@ -65,6 +65,19 @@ jobs:
             echo "EOF"
           } >> "${GITHUB_OUTPUT}"
 
+      - name: Compute APP_VERSION
+        id: app_version
+        shell: bash
+        run: |
+          # tag 触发（如 v1.0.0）→ 写入去掉前缀的 X.Y.Z，前端会拼回 v
+          # main / 其它分支 → Development version
+          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
+          else
+            version="Development version"
+          fi
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+
       - name: Build & push
         uses: docker/build-push-action@v6
         with:
@@ -72,5 +85,6 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          build-args: VERSION=${{ steps.app_version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

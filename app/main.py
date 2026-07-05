@@ -19,6 +19,7 @@ from .notifier import handle_webhook
 from .emby_client import EmbyClient
 from .cover_service import generate_cover_for_library, resolve_font_path
 from .scheduler import start as sched_start, stop as sched_stop, is_running as sched_running, get_next_run as sched_next_run
+from .version import get_version
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("EmbyTool")
@@ -81,7 +82,7 @@ async def lifespan(app: FastAPI):
     logger.info("EmbyTool 已停止")
 
 
-app = FastAPI(title="EmbyTool", version="2.0.0", lifespan=lifespan)
+app = FastAPI(title="EmbyTool", version=get_version(), lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 app.mount("/images", StaticFiles(directory=Path(__file__).parent.parent / "images"), name="images")
 
@@ -90,6 +91,11 @@ app.mount("/images", StaticFiles(directory=Path(__file__).parent.parent / "image
 async def index():
     html = (Path(__file__).parent / "static" / "index.html").read_text(encoding="utf-8")
     return HTMLResponse(html)
+
+
+@app.get("/api/version")
+async def api_version():
+    return JSONResponse({"version": get_version()})
 
 
 # ── 配置 ──
