@@ -45,15 +45,13 @@ jobs:
             "org.opencontainers.image.revision=${GITHUB_SHA}"
           )
 
-          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
-            tags+=("${image}:latest")
-          fi
-
           if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" =~ ^v([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
             version="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}"
             major_minor="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
-            tags+=("${image}:${version}" "${image}:${major_minor}")
+            tags+=("${image}:${version}" "${image}:${major_minor}" "${image}:latest")
             labels+=("org.opencontainers.image.version=${version}")
+          elif [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            tags+=("${image}:latest")
           fi
 
           {

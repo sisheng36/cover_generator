@@ -198,11 +198,18 @@ def _download_emby_image(event_info: dict, server_url: str, api_key: str) -> Opt
         return None
     try:
         client = EmbyClient(server_url, api_key)
-        api_path = client.get_image_url(item, use_primary=False)
+        # 单集入库时，优先用「剧」的海报作为兜底图，避免该集还没有 Backdrop 而漏图。
+        prefer_series_primary = event_info.get("item_type") == "TV"
+        item_for_image = item
+        if prefer_series_primary and not item.get("SeriesPrimaryImageTag") and event_info.get("series_id"):
+            series_item = client.get_item(event_info["series_id"])
+            if series_item:
+                item_for_image = series_item
+        api_path = client.get_image_url(item_for_image, use_primary=prefer_series_primary)
         if not api_path:
             fresh_item = client.get_item(event_info.get("item_id", ""))
             if fresh_item:
-                api_path = client.get_image_url(fresh_item, use_primary=False)
+                api_path = client.get_image_url(fresh_item, use_primary=prefer_series_primary)
         if not api_path:
             return None
         resp = requests.get(f"{server_url.rstrip('/')}{api_path}", headers={"X-Emby-Token": api_key}, timeout=30)
@@ -284,22 +291,6 @@ def fetch_tmdb_info(tmdb_api_key: str, tmdb_id: str, media_type: str = "tv") -> 
     return {}
 
 
-def fetch_tmdb_season_info(tmdb_api_key: str, tmdb_id: str, season: Optional[int]) -> dict:
-    if not tmdb_id or not tmdb_api_key or season is None:
-        return {}
-    url = f"https://api.themoviedb.org/3/tv/{tmdb_id}/season/{season}"
-    try:
-        resp = requests.get(url, params={"api_key": tmdb_api_key, "language": "zh-CN"}, timeout=10)
-        if resp.status_code == 200:
-            return resp.json()
-        resp_en = requests.get(url, params={"api_key": tmdb_api_key, "language": "en-US"}, timeout=10)
-        if resp_en.status_code == 200:
-            return resp_en.json()
-    except Exception as e:
-        logger.warning(f"TMDB 季信息请求失败: {e}")
-    return {}
-
-
 def merge_continuous_episodes(events: List[dict], tmdb_info: dict = None) -> str:
     season_episodes: Dict[int, list] = {}
     for ev in events:
@@ -340,10 +331,10 @@ def build_tv_message(events: List[dict], tmdb_api_key: str) -> Tuple[str, str, O
             show_name = sn
             break
 
-    is_multi = len(events) > 1
     tmdb_id = first.get("tmdb_id")
+    # 始终只展示「剧」级别的元数据（overview/海报/评分），
+    # 不要因为追更最新一集入库、Emby/TMDB 还没有该集数据而漏掉剧情或图片。
     tmdb_info = fetch_tmdb_info(tmdb_api_key, tmdb_id, "tv") if tmdb_id else {}
-    season_info = fetch_tmdb_season_info(tmdb_api_key, tmdb_id, first.get("season_id")) if tmdb_id else {}
 
     title = _build_library_title(show_name, "TV", _resolve_year(first, tmdb_info))
 
@@ -352,18 +343,7 @@ def build_tv_message(events: List[dict], tmdb_api_key: str) -> Tuple[str, str, O
     if tmdb_rating_line:
         texts.append(tmdb_rating_line)
 
-    overview = ""
-    if is_multi and tmdb_info:
-        overview = tmdb_info.get("overview", "")
-    if not overview:
-        overview = first.get("overview", "")
-    if not overview and tmdb_info:
-        overview = tmdb_info.get("overview", "")
-    if season_info and not is_multi and first.get("episode_id") is not None:
-        eps_list = season_info.get("episodes", [])
-        ep_idx = int(first["episode_id"]) - 1
-        if 0 <= ep_idx < len(eps_list):
-            overview = eps_list[ep_idx].get("overview", overview)
+    overview = (tmdb_info.get("overview") or "").strip()
     texts.append(_resolve_overview_line(overview))
 
     texts = _append_time_if_needed(texts)
@@ -410,9 +390,9 @@ def build_generic_message(event_info: dict, tmdb_api_key: str = "") -> Tuple[str
     tmdb_rating_line = _resolve_tmdb_rating_line(tmdb_info)
     if tmdb_rating_line:
         texts.append(tmdb_rating_line)
-    overview = event_info.get("overview")
-    if not overview and tmdb_info:
-        overview = tmdb_info.get("overview")
+    # 剧/电影统一使用 TMDB 上「剧/电影」级别的简介；
+    # 不要因为单集 Emby Overview 为空、或者该集还没人评分而漏掉剧情/图片。
+    overview = (tmdb_info.get("overview") if tmdb_info else "") or ""
     if item_type == "TV" and event_info.get("season_id") is not None and event_info.get("episode_id") is not None:
         texts.append(_resolve_episode_line([event_info]))
     if event_action == "library.new":
