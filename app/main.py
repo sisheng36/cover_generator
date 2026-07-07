@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from PIL import Image
 
 from fastapi import FastAPI, Request, UploadFile, File, Form
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from .styles.style_single_1 import create_style_single_1
@@ -28,6 +28,7 @@ logger = logging.getLogger("EmbyTool")
 Image.MAX_IMAGE_PIXELS = 89_000_000
 
 app_config: dict = {}
+STATIC_DIR = Path(__file__).parent / "static"
 
 
 def _new_client() -> EmbyClient:
@@ -83,14 +84,19 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="EmbyTool", version=get_version(), lifespan=lifespan)
-app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 app.mount("/images", StaticFiles(directory=Path(__file__).parent.parent / "images"), name="images")
 
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
-    html = (Path(__file__).parent / "static" / "index.html").read_text(encoding="utf-8")
+    html = (STATIC_DIR / "index.html").read_text(encoding="utf-8")
     return HTMLResponse(html)
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return FileResponse(STATIC_DIR / "favicon.ico")
 
 
 @app.get("/api/version")
