@@ -80,19 +80,69 @@ def darken_color(color, factor=0.7):
     return (int(r * factor), int(g * factor), int(b * factor))
 
 def add_shadow(img, offset=(5, 5), shadow_color=(0, 0, 0, 100), blur_radius=3):
-    shadow_width = img.width + offset[0] + blur_radius * 2
-    shadow_height = img.height + offset[1] + blur_radius * 2
+    base = img if img.mode == "RGBA" else img.convert("RGBA")
+    shadow_mask = base.getchannel("A")
+
+    # 双层阴影：先给一个贴边的“接触阴影”，再叠一层更柔和的投影，
+    # 右侧与底部会更有浮起感，适合多图海报墙。
+    shadow_layers = [
+        (
+            max(1, int(offset[0] * 0.45)),
+            max(1, int(offset[1] * 0.45)),
+            max(2, int(blur_radius * 0.42)),
+            max(0, min(255, int(shadow_color[3] * 0.62))),
+        ),
+        (
+            int(offset[0]),
+            int(offset[1]),
+            int(blur_radius),
+            max(0, min(255, int(shadow_color[3]))),
+        ),
+    ]
+    max_blur = max(layer[2] for layer in shadow_layers)
+    max_offset_x = max(layer[0] for layer in shadow_layers)
+    max_offset_y = max(layer[1] for layer in shadow_layers)
+    shadow_width = base.width + max_offset_x + max_blur * 2
+    shadow_height = base.height + max_offset_y + max_blur * 2
     shadow = Image.new("RGBA", (shadow_width, shadow_height), (0, 0, 0, 0))
-    shadow_layer = Image.new("RGBA", img.size, shadow_color)
-    shadow.paste(shadow_layer, (blur_radius + offset[0], blur_radius + offset[1]))
-    shadow_layer.close()
-    shadow = shadow.filter(ImageFilter.GaussianBlur(blur_radius))
-    result = Image.new("RGBA", shadow.size, (0, 0, 0, 0))
-    result.paste(img, (blur_radius, blur_radius), img if img.mode == "RGBA" else None)
-    out = Image.alpha_composite(shadow, result)
-    shadow.close()
-    result.close()
-    return out
+
+    try:
+        for off_x, off_y, layer_blur, layer_alpha in shadow_layers:
+            layer = Image.new("RGBA", base.size, shadow_color[:3] + (layer_alpha,))
+            layer_canvas = Image.new("RGBA", shadow.size, (0, 0, 0, 0))
+            layer_canvas.paste(layer, (max_blur + off_x, max_blur + off_y), shadow_mask)
+            layer.close()
+            blurred = layer_canvas.filter(ImageFilter.GaussianBlur(layer_blur))
+            layer_canvas.close()
+            merged = Image.alpha_composite(shadow, blurred)
+            shadow.close()
+            blurred.close()
+            shadow = merged
+
+        result = Image.new("RGBA", shadow.size, (0, 0, 0, 0))
+        result.paste(base, (max_blur, max_blur), base)
+        out = Image.alpha_composite(shadow, result)
+        result.close()
+        return out
+    finally:
+        shadow_mask.close()
+        shadow.close()
+        if base is not img:
+            base.close()
+
+def create_shadow_layer(img, offset=(5, 5), shadow_color=(0, 0, 0, 100), blur_radius=3):
+    base = img if img.mode == "RGBA" else img.convert("RGBA")
+    shadow = Image.new("RGBA", base.size, (0, 0, 0, 0))
+    shadow_source = Image.new("RGBA", base.size, shadow_color)
+    shadow_mask = base.getchannel("A")
+    try:
+        shadow.paste(shadow_source, offset, shadow_mask)
+        return shadow.filter(ImageFilter.GaussianBlur(blur_radius))
+    finally:
+        shadow_source.close()
+        shadow_mask.close()
+        if base is not img:
+            base.close()
 
 def draw_text_on_image(image, text, position, font_path, default_font_path, font_size, fill_color=(255, 255, 255, 255), shadow=False, shadow_color=None, shadow_offset=10, shadow_alpha=75):
     base = image if image.mode == "RGBA" else image.convert("RGBA")
@@ -311,6 +361,7 @@ def create_style_multi_1(library_dir, title, font_path, font_size=(1,1), is_blur
 
         result = colored_bg_img.convert("RGBA")
         colored_bg_img.close()
+        poster_group = Image.new("RGBA", result.size, (0, 0, 0, 0))
         for col_index, column_posters in enumerate(grouped_posters):
             if col_index >= cols: break
             column_x = start_x + col_index * column_spacing
@@ -333,7 +384,12 @@ def create_style_multi_1(library_dir, title, font_path, font_size=(1,1), is_blur
                         poster.close()
                         mask.close()
                         poster = poster_with_corners
-                    poster_with_shadow = add_shadow(poster, offset=(20, 20), shadow_color=(0, 0, 0, 216), blur_radius=20)
+                    poster_with_shadow = add_shadow(
+                        poster,
+                        offset=(17, 14),
+                        shadow_color=(0, 0, 0, 188),
+                        blur_radius=16,
+                    )
                     poster.close()
                     y_position = row_index * (cell_height + margin)
                     column_image.paste(poster_with_shadow, (0, y_position), poster_with_shadow)
@@ -358,8 +414,19 @@ def create_style_multi_1(library_dir, title, font_path, font_size=(1,1), is_blur
 
             final_x = column_center_x - rotated_column.width // 2
             final_y = column_center_y - rotated_column.height // 2
-            result.paste(rotated_column, (final_x, final_y), rotated_column)
+            poster_group.paste(rotated_column, (final_x, final_y), rotated_column)
             rotated_column.close()
+
+        poster_group_shadow = create_shadow_layer(
+            poster_group,
+            offset=(26, 22),
+            shadow_color=(0, 0, 0, 76),
+            blur_radius=28,
+        )
+        result = Image.alpha_composite(result, poster_group_shadow)
+        poster_group_shadow.close()
+        result = Image.alpha_composite(result, poster_group)
+        poster_group.close()
 
         random_color = get_random_color(poster_files[0]) if poster_files else (random.randint(50, 200), random.randint(50, 200), random.randint(50, 200), 255)
 
