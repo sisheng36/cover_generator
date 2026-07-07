@@ -31,7 +31,7 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = ROOT / "app" / "static"
-SRC_PATH = Path("/Users/knight/Downloads/Safari/网站图标设计-3.png")
+SRC_PATH = Path("/Users/knight/Downloads/Safari/网站图标设计-5.png")
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
