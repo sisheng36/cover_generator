@@ -410,7 +410,17 @@ func createStyleMulti1(libraryDir string, title [2]string, fontPaths [2]string, 
 			draw.Draw(columnImage, image.Rect(0, yPosition, posterWithShadow.Bounds().Dx(), yPosition+posterWithShadow.Bounds().Dy()), posterWithShadow, image.Point{}, draw.Over)
 		}
 
-		rotatedColumn := imaging.Rotate(columnImage, rotationAngle, color.Transparent)
+		// 与 Python 参考一致：先把整列图居中放进更大的透明旋转画布再旋转，
+		// 使列内容（含阴影、圆角抗锯齿边）远离旋转边界，避免贴紧边界旋转时
+		// 双线性插值对透明背景取样产生的暗色毛刺，以及右列因此看上去偏右被裁切。
+		colW := columnImage.Bounds().Dx()
+		colH := columnImage.Bounds().Dy()
+		rotationCanvasSize := int(math.Sqrt(float64(colW*colW+colH*colH)) * 1.5)
+		rotationCanvas := image.NewNRGBA(image.Rect(0, 0, rotationCanvasSize, rotationCanvasSize))
+		pasteX := (rotationCanvasSize - colW) / 2
+		pasteY := (rotationCanvasSize - colH) / 2
+		draw.Draw(rotationCanvas, image.Rect(pasteX, pasteY, pasteX+colW, pasteY+colH), columnImage, image.Point{}, draw.Over)
+		rotatedColumn := imaging.Rotate(rotationCanvas, rotationAngle, color.Transparent)
 		columnCenterY := startY + columnHeight/2
 		columnCenterX := columnX
 		if colIndex == 1 {
