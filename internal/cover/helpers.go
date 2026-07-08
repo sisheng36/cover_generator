@@ -732,7 +732,7 @@ func drawBadge(img image.Image, itemCount int, fontCache *fonts.Cache, fontPath 
 	}
 
 	canvas := toNRGBA(img)
-	canvasWidth, canvasHeight := canvas.Bounds().Dx(), canvas.Bounds().Dy()
+	canvasHeight := canvas.Bounds().Dy()
 	badgeFontSize := int(float64(canvasHeight) * sizeRatio)
 	if badgeFontSize < 12 {
 		badgeFontSize = 12

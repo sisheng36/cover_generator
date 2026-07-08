@@ -368,7 +368,7 @@ func createStyleMulti1(libraryDir string, title [2]string, fontPaths [2]string, 
 	rows := 3
 	cols := 3
 	margin := 22
-	cornerRadius := int(46.1)
+	cornerRadius := 46
 	rotationAngle := -15.8
 	startX := 1050
 	startY := -362
