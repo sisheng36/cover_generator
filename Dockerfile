@@ -5,14 +5,15 @@ RUN apk add --no-cache ca-certificates git tzdata
 WORKDIR /src
 
 COPY go.mod ./
-RUN go mod download
 
 COPY . .
+
+RUN go mod download all
 
 ARG VERSION="Development version"
 RUN printf '%s' "${VERSION}" > app/VERSION
 
-RUN CGO_ENABLED=0 go build -trimpath -o /out/embytool ./cmd/embytool
+RUN CGO_ENABLED=0 go build -mod=mod -trimpath -o /out/embytool ./cmd/embytool
 
 FROM alpine:3.20
 
