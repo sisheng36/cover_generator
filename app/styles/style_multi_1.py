@@ -354,7 +354,9 @@ def create_style_multi_1(library_dir, title, font_path, font_size=(1,1), is_blur
         order_map = {num: index for index, num in enumerate(custom_order)}
         poster_files = sorted([os.path.join(poster_folder, f) for f in os.listdir(poster_folder) if os.path.isfile(os.path.join(poster_folder, f)) and f.lower().endswith(supported_formats) and os.path.splitext(f)[0] in order_map], key=lambda x: order_map[os.path.splitext(os.path.basename(x))[0]])
 
-        if not poster_files: return False
+        if not poster_files:
+            colored_bg_img.close()
+            return False
         poster_files = poster_files[:rows * cols]
         cell_width, cell_height = POSTER_GEN_CONFIG["CELL_WIDTH"], POSTER_GEN_CONFIG["CELL_HEIGHT"]
         grouped_posters = [poster_files[i : i + rows] for i in range(0, len(poster_files), rows)]

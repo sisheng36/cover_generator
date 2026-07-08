@@ -13,15 +13,15 @@ class EmbyClient:
 
     def _get(self, path: str, params: dict = None) -> Optional[dict]:
         try:
-            resp = requests.get(
+            with requests.get(
                 f"{self.base_url}{path}",
                 params=params or {},
                 headers=self._headers,
                 timeout=30,
-            )
-            if resp.status_code == 200:
-                return resp.json()
-            logger.warning(f"Emby GET {path} -> {resp.status_code}")
+            ) as resp:
+                if resp.status_code == 200:
+                    return resp.json()
+                logger.warning(f"Emby GET {path} -> {resp.status_code}")
         except Exception as e:
             logger.error(f"Emby GET {path} 失败: {e}")
         return None
@@ -133,13 +133,14 @@ class EmbyClient:
     def download_image(self, api_path: str, save_path: str) -> Optional[str]:
         try:
             url = f"{self.base_url}{api_path}"
-            resp = requests.get(url, headers=self._headers, stream=True, timeout=30)
-            if resp.status_code == 200:
-                with open(save_path, "wb") as f:
-                    for chunk in resp.iter_content(1024):
-                        f.write(chunk)
-                return save_path
-            logger.warning(f"下载图片失败 {api_path} -> {resp.status_code}")
+            with requests.get(url, headers=self._headers, stream=True, timeout=30) as resp:
+                if resp.status_code == 200:
+                    with open(save_path, "wb") as f:
+                        for chunk in resp.iter_content(1024):
+                            if chunk:
+                                f.write(chunk)
+                    return save_path
+                logger.warning(f"下载图片失败 {api_path} -> {resp.status_code}")
         except Exception as e:
             logger.error(f"下载图片异常 {api_path}: {e}")
         return None
@@ -161,12 +162,12 @@ class EmbyClient:
 
             url = f"{self.base_url}/Items/{library_id}/Images/Primary"
             headers = {"X-Emby-Token": self.api_key, "Content-Type": "image/jpeg"}
-            resp = requests.post(url, data=body, headers=headers, timeout=30)
-            del body
-            if resp.status_code in (200, 204):
-                logger.info(f"封面上传成功: {library_id}")
-                return True
-            logger.warning(f"封面上传失败 {library_id} -> {resp.status_code}: {resp.text[:200]}")
+            with requests.post(url, data=body, headers=headers, timeout=30) as resp:
+                del body
+                if resp.status_code in (200, 204):
+                    logger.info(f"封面上传成功: {library_id}")
+                    return True
+                logger.warning(f"封面上传失败 {library_id} -> {resp.status_code}: {resp.text[:200]}")
         except Exception as e:
             logger.error(f"封面上传异常: {e}")
         return False

@@ -212,12 +212,12 @@ def _download_emby_image(event_info: dict, server_url: str, api_key: str) -> Opt
                 api_path = client.get_image_url(fresh_item, use_primary=prefer_series_primary)
         if not api_path:
             return None
-        resp = requests.get(f"{server_url.rstrip('/')}{api_path}", headers={"X-Emby-Token": api_key}, timeout=30)
-        if resp.status_code != 200 or not resp.content:
-            logger.warning(f"Emby 图片下载失败 {api_path} -> {resp.status_code}")
-            return None
-        image_name = "backdrop.jpg" if "/Backdrop/" in api_path else "poster.jpg"
-        return resp.content, image_name
+        with requests.get(f"{server_url.rstrip('/')}{api_path}", headers={"X-Emby-Token": api_key}, timeout=30) as resp:
+            if resp.status_code != 200 or not resp.content:
+                logger.warning(f"Emby 图片下载失败 {api_path} -> {resp.status_code}")
+                return None
+            image_name = "backdrop.jpg" if "/Backdrop/" in api_path else "poster.jpg"
+            return resp.content, image_name
     except Exception as e:
         logger.warning(f"Emby 图片下载异常: {e}")
         return None
@@ -280,12 +280,12 @@ def fetch_tmdb_info(tmdb_api_key: str, tmdb_id: str, media_type: str = "tv") -> 
     media = "movie" if media_type == "movie" else "tv"
     base = f"https://api.themoviedb.org/3/{media}/{tmdb_id}"
     try:
-        resp = requests.get(base, params={"api_key": tmdb_api_key, "language": "zh-CN"}, timeout=10)
-        if resp.status_code == 200:
-            return resp.json()
-        resp_en = requests.get(base, params={"api_key": tmdb_api_key, "language": "en-US"}, timeout=10)
-        if resp_en.status_code == 200:
-            return resp_en.json()
+        with requests.get(base, params={"api_key": tmdb_api_key, "language": "zh-CN"}, timeout=10) as resp:
+            if resp.status_code == 200:
+                return resp.json()
+        with requests.get(base, params={"api_key": tmdb_api_key, "language": "en-US"}, timeout=10) as resp_en:
+            if resp_en.status_code == 200:
+                return resp_en.json()
     except Exception as e:
         logger.warning(f"TMDB API 请求失败: {e}")
     return {}
@@ -422,32 +422,32 @@ def send_telegram(
     try:
         caption = _format_telegram_payload(title, text, limit=1024)
         if image_bytes:
-            resp = requests.post(
+            with requests.post(
                 f"https://api.telegram.org/bot{token}/sendPhoto",
                 data={"chat_id": chat_id, "caption": caption, "parse_mode": "HTML"},
                 files={"photo": (image_name, image_bytes)},
                 timeout=30,
-            )
-            if resp.status_code == 200:
-                return True
-            logger.warning(f"Telegram sendPhoto(上传) 失败 ({resp.status_code}), 降级为 URL/文本")
+            ) as resp:
+                if resp.status_code == 200:
+                    return True
+                logger.warning(f"Telegram sendPhoto(上传) 失败 ({resp.status_code}), 降级为 URL/文本")
         if image_url:
-            resp = requests.post(
+            with requests.post(
                 f"https://api.telegram.org/bot{token}/sendPhoto",
                 data={"chat_id": chat_id, "photo": image_url, "caption": caption, "parse_mode": "HTML"},
                 timeout=15,
-            )
-            if resp.status_code == 200:
-                return True
-            logger.warning(f"Telegram sendPhoto 失败 ({resp.status_code}), 降级为 sendMessage")
+            ) as resp:
+                if resp.status_code == 200:
+                    return True
+                logger.warning(f"Telegram sendPhoto 失败 ({resp.status_code}), 降级为 sendMessage")
 
         payload = _format_telegram_payload(title, text)
-        resp = requests.post(
+        with requests.post(
             f"https://api.telegram.org/bot{token}/sendMessage",
             data={"chat_id": chat_id, "text": payload, "parse_mode": "HTML"},
             timeout=15,
-        )
-        return resp.status_code == 200
+        ) as resp:
+            return resp.status_code == 200
     except Exception as e:
         logger.error(f"Telegram 发送失败: {e}")
         return False

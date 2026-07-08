@@ -67,6 +67,8 @@ def _scheduled_generate():
         for lib in libs:
             result = generate_cover_for_library(client, lib, config)
             logger.info(f"定时任务 [{lib['Name']}] {result['message']}")
+            del result
+            gc.collect()
     finally:
         # 定时任务跑完立刻归还 PIL 在 C 层分配的大块内存给系统。
         gc.collect()
