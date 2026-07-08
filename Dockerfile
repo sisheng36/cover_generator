@@ -1,23 +1,35 @@
-FROM python:3.11-slim
+FROM golang:1.23-alpine AS builder
 
-ENV TZ=Asia/Shanghai
-ENV PYTHONUNBUFFERED=1
-RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
+RUN apk add --no-cache ca-certificates git tzdata
 
-RUN mkdir -p /data
+WORKDIR /src
 
-WORKDIR /app
-
-# 构建期版本号：由 CI 传入（tag → X.Y.Z；main → "Development version"）。
-# 未传入时写一个占位值，保证 app/version.py 总能读到文件。
-ARG VERSION=Development version
-RUN mkdir -p app && printf '%s' "${VERSION}" > app/VERSION
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY go.mod ./
+RUN go mod download
 
 COPY . .
 
+ARG VERSION="Development version"
+RUN printf '%s' "${VERSION}" > app/VERSION
+
+RUN CGO_ENABLED=0 go build -trimpath -o /out/embytool ./cmd/embytool
+
+FROM alpine:3.20
+
+RUN apk add --no-cache ca-certificates tzdata
+
+WORKDIR /app
+
+RUN mkdir -p /data
+
+COPY --from=builder /out/embytool /usr/local/bin/embytool
+COPY --from=builder /src/app/VERSION ./app/VERSION
+COPY --from=builder /src/app/static ./app/static
+COPY --from=builder /src/fonts ./fonts
+COPY --from=builder /src/images ./images
+
+ENV TZ=Asia/Shanghai
+
 EXPOSE 8055
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8055", "--log-level", "info"]
+ENTRYPOINT ["/usr/local/bin/embytool"]
