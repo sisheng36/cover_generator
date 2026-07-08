@@ -20,7 +20,9 @@ import (
 	"github.com/disintegration/imaging"
 	"golang.org/x/image/font/basicfont"
 	"golang.org/x/image/font"
+	xdraw "golang.org/x/image/draw"
 	"golang.org/x/image/math/fixed"
+	"golang.org/x/image/math/f64"
 	"golang.org/x/image/vector"
 	_ "golang.org/x/image/bmp"
 	_ "golang.org/x/image/webp"
@@ -517,12 +519,12 @@ func addShadowAndRotate(canvas *image.NRGBA, img image.Image, angle float64, off
 	shadowLayer := imaging.New(base.Bounds().Dx(), base.Bounds().Dy(), shadowColor)
 	draw.DrawMask(shadow, image.Rectangle{Min: shadowCenter, Max: shadowCenter.Add(base.Bounds().Size())}, shadowLayer, image.Point{}, shadowMask, image.Point{}, draw.Over)
 	shadow = imaging.Blur(shadow, float64(radius))
-	rotatedShadow := imaging.Rotate(shadow, angle, color.Transparent)
+	rotatedShadow := rotateBicubic(shadow, angle)
 	shadowX := centerPos.X - rotatedShadow.Bounds().Dx()/2 + offset.X
 	shadowY := centerPos.Y - rotatedShadow.Bounds().Dy()/2 + offset.Y
 	draw.Draw(canvas, image.Rect(shadowX, shadowY, shadowX+rotatedShadow.Bounds().Dx(), shadowY+rotatedShadow.Bounds().Dy()), rotatedShadow, image.Point{}, draw.Over)
 
-	rotatedImg := imaging.Rotate(base, angle, color.Transparent)
+	rotatedImg := rotateBicubic(base, angle)
 	imgX := centerPos.X - rotatedImg.Bounds().Dx()/2
 	imgY := centerPos.Y - rotatedImg.Bounds().Dy()/2
 	draw.Draw(canvas, image.Rect(imgX, imgY, imgX+rotatedImg.Bounds().Dx(), imgY+rotatedImg.Bounds().Dy()), rotatedImg, image.Point{}, draw.Over)
@@ -782,7 +784,7 @@ func drawBadge(img image.Image, itemCount int, fontCache *fonts.Cache, fontPath 
 		centerY := float64(textCanvasSize) / 2
 		drawString(textCanvas, countText, centerX+2, centerY+2-float64(textMetrics.Ascent)/2, face, textShadow)
 		drawString(textCanvas, countText, centerX, centerY-float64(textMetrics.Ascent)/2, face, textColor)
-		rotatedText := imaging.Rotate(textCanvas, 45, color.Transparent)
+		rotatedText := rotateBicubic(textCanvas, 45)
 		positionFactor := 0.38
 		pasteCenterX := int(float64(ribbonWidth) * positionFactor)
 		pasteCenterY := int(float64(ribbonWidth) * positionFactor)
@@ -1070,4 +1072,110 @@ func absInt(v int) int {
 		return -v
 	}
 	return v
+}
+
+// rotateBicubic rotates src by angle (degrees, counter-clockwise) and returns
+// a new NRGBA image sized to the rotated content's bounding box (expand=true).
+//
+// It uses golang.org/x/image/draw.CatmullRom (true bicubic resampling) instead
+// of disintegration/imaging.Rotate's bilinear kernel. The bilinear kernel was
+// the root cause of the "split/dark edges on the upper-right of right-side
+// posters": when a poster's anti-aliased rounded corner or shadow edge sat on
+// the column image boundary, the bilinear 2x2 tap crossed into the transparent
+// padding and blended premultiplied alpha down to a dark fringe. CatmullRom's
+// 4x4 support also samples transparent neighbors, but its negative lobes
+// reconstruct sharp alpha transitions instead of averaging them into gray.
+//
+// The transform maps src pixel (sx,sy) -> dst, with the source centered so the
+// rotation is about its own center, matching PIL's Image.rotate(expand=True).
+func rotateBicubic(src image.Image, angle float64) *image.NRGBA {
+	angle = angle - math.Floor(angle/360)*360
+	if angle == 0 {
+		return toNRGBA(src)
+	}
+
+	base := toNRGBA(src)
+	srcB := base.Bounds()
+	srcW := srcB.Dx()
+	srcH := srcB.Dy()
+	if srcW <= 0 || srcH <= 0 {
+		return image.NewNRGBA(image.Rect(0, 0, 0, 0))
+	}
+
+	// Special-case 90/180/270 to avoid the affine setup entirely; these are
+	// lossless and have no edge artifacts.
+	switch {
+	case angle == 90:
+		return imaging.Rotate90(base)
+	case angle == 180:
+		return imaging.Rotate180(base)
+	case angle == 270:
+		return imaging.Rotate270(base)
+	}
+
+	rad := math.Pi * angle / 180.0
+	sin, cos := math.Sincos(rad)
+
+	// Forward map the source rectangle's four corners to find the destination
+	// bounding box (expand=true). Rotation is about the source center.
+	// A source point (sx,sy) relative to center (cw,ch) maps to:
+	//   dx = cos*(sx-cw) - sin*(sy-ch)
+	//   dy = sin*(sx-cw) + cos*(sy-ch)
+	cw := float64(srcW) / 2.0
+	ch := float64(srcH) / 2.0
+	corners := [][2]float64{
+		{0, 0},
+		{float64(srcW), 0},
+		{float64(srcW), float64(srcH)},
+		{0, float64(srcH)},
+	}
+	minX, minY := math.Inf(+1), math.Inf(+1)
+	maxX, maxY := math.Inf(-1), math.Inf(-1)
+	for _, c := range corners {
+		ox := c[0] - cw
+		oy := c[1] - ch
+		dx := cos*ox - sin*oy + cw
+		dy := sin*ox + cos*oy + ch
+		if dx < minX {
+			minX = dx
+		}
+		if dx > maxX {
+			maxX = dx
+		}
+		if dy < minY {
+			minY = dy
+		}
+		if dy > maxY {
+			maxY = dy
+		}
+	}
+	dstW := int(math.Ceil(maxX) - math.Floor(minX))
+	dstH := int(math.Ceil(maxY) - math.Floor(minY))
+	if dstW <= 0 || dstH <= 0 {
+		return image.NewNRGBA(image.Rect(0, 0, 0, 0))
+	}
+
+	dst := image.NewNRGBA(image.Rect(0, 0, dstW, dstH))
+
+	// Build the s2d (src->dst) affine, then shift so the bounding box origin
+	// lands at dst (0,0). Aff3 layout (row-major, [a b c; d e f]):
+	//   dx = a*sx + b*sy + c
+	//   dy = d*sx + e*sy + f
+	// Forward rotation about center: translate to origin, rotate, translate
+	// back, then shift by -min to align bbox to (0,0).
+	s2d := f64.Aff3{
+		cos, -sin, cw - cos*cw + sin*ch - minX,
+		sin, cos, ch - sin*cw - cos*ch - minY,
+	}
+
+	// sr is the full source bounds. CatmullRom.Transform with op=Over will
+	// alpha-composite the rotated source onto the (zero) destination, leaving
+	// fully transparent pixels as transparent black — exactly the expand=true
+	// behavior we want, without the dark-fringe artifacts.
+	xdraw.CatmullRom.Transform(
+		dst, s2d,
+		base, srcB,
+		xdraw.Over, nil,
+	)
+	return dst
 }

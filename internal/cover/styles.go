@@ -420,7 +420,7 @@ func createStyleMulti1(libraryDir string, title [2]string, fontPaths [2]string, 
 		pasteX := (rotationCanvasSize - colW) / 2
 		pasteY := (rotationCanvasSize - colH) / 2
 		draw.Draw(rotationCanvas, image.Rect(pasteX, pasteY, pasteX+colW, pasteY+colH), columnImage, image.Point{}, draw.Over)
-		rotatedColumn := imaging.Rotate(rotationCanvas, rotationAngle, color.Transparent)
+		rotatedColumn := rotateBicubic(rotationCanvas, rotationAngle)
 		columnCenterY := startY + columnHeight/2
 		columnCenterX := columnX
 		if colIndex == 1 {
