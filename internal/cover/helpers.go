@@ -160,16 +160,23 @@ func addFilmGrain(imageSrc image.Image, intensity float64) *image.NRGBA {
 		return imaging.Clone(base)
 	}
 
-	smallW := maxInt(64, base.Bounds().Dx()/4)
-	smallH := maxInt(64, base.Bounds().Dy()/4)
-	noise := image.NewGray(image.Rect(0, 0, smallW, smallH))
-	for y := 0; y < smallH; y++ {
-		for x := 0; x < smallW; x++ {
-			noise.SetGray(x, y, color.Gray{Y: uint8(rand.Intn(255))})
+	b := base.Bounds()
+	sigma := math.Max(4.0, math.Min(64.0, strength*180.0))
+	noise := image.NewGray(image.Rect(0, 0, b.Dx(), b.Dy()))
+	for y := 0; y < b.Dy(); y++ {
+		for x := 0; x < b.Dx(); x++ {
+			v := int(128 + rand.NormFloat64()*sigma)
+			if v < 0 {
+				v = 0
+			} else if v > 255 {
+				v = 255
+			}
+			noise.SetGray(x, y, color.Gray{Y: uint8(v)})
 		}
 	}
-	noiseBig := imaging.Resize(noise, base.Bounds().Dx(), base.Bounds().Dy(), imaging.NearestNeighbor)
-	return imaging.Overlay(base, noiseBig, image.Point{}, math.Min(0.18, strength*0.9))
+	noiseRGB := image.NewNRGBA(base.Bounds())
+	draw.Draw(noiseRGB, noiseRGB.Bounds(), noise, image.Point{}, draw.Src)
+	return imaging.Overlay(base, noiseRGB, image.Point{}, math.Min(0.18, strength*0.9))
 }
 
 func createHorizontalGradientMask(size image.Point, power float64) *image.Alpha {
@@ -295,29 +302,64 @@ func colorDistance(c1, c2 color.NRGBA) float64 {
 	return hDist*5 + math.Abs(s1-s2) + math.Abs(v1-v2)
 }
 
-func findDominantMacaronColors(img image.Image, numColors int) []color.NRGBA {
-	small := imaging.Resize(img, 150, 150, imaging.Lanczos)
-	bounds := small.Bounds()
-	counts := map[color.NRGBA]int{}
+func thumbnailImage(img image.Image, maxW, maxH int) *image.NRGBA {
+	base := toNRGBA(img)
+	b := base.Bounds()
+	width, height := b.Dx(), b.Dy()
+	if width <= 0 || height <= 0 || maxW <= 0 || maxH <= 0 {
+		return image.NewNRGBA(image.Rect(0, 0, 0, 0))
+	}
+	scale := math.Min(float64(maxW)/float64(width), float64(maxH)/float64(height))
+	if scale >= 1 {
+		return imaging.Clone(base)
+	}
+	newW := maxInt(1, int(float64(width)*scale))
+	newH := maxInt(1, int(float64(height)*scale))
+	return imaging.Resize(base, newW, newH, imaging.Lanczos)
+}
+
+type colorCount struct {
+	c     color.NRGBA
+	n     int
+	first int
+}
+
+func sortedColorCounts(img image.Image, keep func(color.NRGBA) bool) []colorCount {
+	bounds := img.Bounds()
+	indexByColor := map[color.NRGBA]int{}
+	counts := []colorCount{}
+	seenIndex := 0
 	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
 		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			c := color.NRGBAModel.Convert(small.At(x, y)).(color.NRGBA)
-			if !isNotBlackWhiteGrayNear(c, 20) {
+			c := color.NRGBAModel.Convert(img.At(x, y)).(color.NRGBA)
+			if keep != nil && !keep(c) {
+				seenIndex++
 				continue
 			}
 			c.A = 255
-			counts[c]++
+			if idx, ok := indexByColor[c]; ok {
+				counts[idx].n++
+			} else {
+				indexByColor[c] = len(counts)
+				counts = append(counts, colorCount{c: c, n: 1, first: seenIndex})
+			}
+			seenIndex++
 		}
 	}
-	type pair struct {
-		c color.NRGBA
-		n int
-	}
-	pairs := make([]pair, 0, len(counts))
-	for c, n := range counts {
-		pairs = append(pairs, pair{c: c, n: n})
-	}
-	sort.Slice(pairs, func(i, j int) bool { return pairs[i].n > pairs[j].n })
+	sort.SliceStable(counts, func(i, j int) bool {
+		if counts[i].n != counts[j].n {
+			return counts[i].n > counts[j].n
+		}
+		return counts[i].first < counts[j].first
+	})
+	return counts
+}
+
+func findDominantMacaronColors(img image.Image, numColors int) []color.NRGBA {
+	small := thumbnailImage(img, 150, 150)
+	pairs := sortedColorCounts(small, func(c color.NRGBA) bool {
+		return isNotBlackWhiteGrayNear(c, 20)
+	})
 	candidates := make([]color.NRGBA, 0, numColors)
 	for _, p := range pairs[:minInt(len(pairs), numColors*5)] {
 		adjusted := adjustColorMacaron(p.c)
@@ -340,28 +382,10 @@ func findDominantMacaronColors(img image.Image, numColors int) []color.NRGBA {
 }
 
 func findDominantVibrantColors(img image.Image, numColors int) []color.NRGBA {
-	small := imaging.Resize(img, 100, 100, imaging.Lanczos)
-	bounds := small.Bounds()
-	counts := map[color.NRGBA]int{}
-	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			c := color.NRGBAModel.Convert(small.At(x, y)).(color.NRGBA)
-			if !isNotBlackWhiteGrayNear(c, 20) {
-				continue
-			}
-			c.A = 255
-			counts[c]++
-		}
-	}
-	type pair struct {
-		c color.NRGBA
-		n int
-	}
-	pairs := make([]pair, 0, len(counts))
-	for c, n := range counts {
-		pairs = append(pairs, pair{c: c, n: n})
-	}
-	sort.Slice(pairs, func(i, j int) bool { return pairs[i].n > pairs[j].n })
+	small := thumbnailImage(img, 100, 100)
+	pairs := sortedColorCounts(small, func(c color.NRGBA) bool {
+		return isNotBlackWhiteGrayNear(c, 20)
+	})
 	candidates := make([]color.NRGBA, 0, numColors)
 	seenHue := map[int]struct{}{}
 	for _, p := range pairs[:minInt(len(pairs), numColors*3)] {
@@ -457,7 +481,7 @@ func roundedRectMask(width, height, radius int) *image.Alpha {
 	cx = float64(width - radius)
 	cy = float64(radius)
 	for i := 0; i <= steps; i++ {
-		theta := -math.Pi / 2 * float64(i) / float64(steps)
+		theta := -math.Pi/2 + (math.Pi/2)*float64(i)/float64(steps)
 		points = append(points, pointF{X: cx + float64(radius)*math.Cos(theta), Y: cy + float64(radius)*math.Sin(theta)})
 	}
 	// Bottom-right arc.
@@ -499,6 +523,19 @@ func addRoundedCorners(img image.Image, radius int) *image.NRGBA {
 	dst := image.NewNRGBA(base.Bounds())
 	draw.DrawMask(dst, dst.Bounds(), base, image.Point{}, mask, image.Point{}, draw.Src)
 	return dst
+}
+
+func addRoundedCornersHighRes(img image.Image, radius int) *image.NRGBA {
+	base := toNRGBA(img)
+	width := base.Bounds().Dx()
+	height := base.Bounds().Dy()
+	if width <= 0 || height <= 0 {
+		return image.NewNRGBA(image.Rect(0, 0, 0, 0))
+	}
+	const factor = 2
+	enlarged := imaging.Resize(base, width*factor, height*factor, imaging.Lanczos)
+	rounded := addRoundedCorners(enlarged, radius*factor)
+	return imaging.Resize(rounded, width, height, imaging.Lanczos)
 }
 
 func addShadowAndRotate(canvas *image.NRGBA, img image.Image, angle float64, offset image.Point, radius int, opacity float64, centerPos image.Point) *image.NRGBA {
@@ -642,8 +679,12 @@ func getRandomColor(path string) color.NRGBA {
 	if b.Dx() <= 0 || b.Dy() <= 0 {
 		return color.NRGBA{R: 120, G: 120, B: 120, A: 255}
 	}
-	x := rand.Intn(maxInt(1, int(float64(b.Dx())*0.3))) + int(float64(b.Dx())*0.5)
-	y := rand.Intn(maxInt(1, int(float64(b.Dy())*0.3))) + int(float64(b.Dy())*0.5)
+	minX := int(float64(b.Dx()) * 0.5)
+	maxX := int(float64(b.Dx()) * 0.8)
+	minY := int(float64(b.Dy()) * 0.5)
+	maxY := int(float64(b.Dy()) * 0.8)
+	x := minX + rand.Intn(maxInt(1, maxX-minX+1))
+	y := minY + rand.Intn(maxInt(1, maxY-minY+1))
 	x = minInt(x, b.Max.X-1)
 	y = minInt(y, b.Max.Y-1)
 	c := color.NRGBAModel.Convert(img.At(x, y)).(color.NRGBA)
@@ -925,37 +966,14 @@ func getPosterPrimaryColors(imagePath string) []color.NRGBA {
 		return []color.NRGBA{{R: 150, G: 100, B: 50, A: 255}}
 	}
 	small := imaging.Resize(img, 100, 150, imaging.Lanczos)
-	bounds := small.Bounds()
-	counts := map[color.NRGBA]int{}
-	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			c := color.NRGBAModel.Convert(small.At(x, y)).(color.NRGBA)
-			if c.A > 200 && !(c.R < 30 && c.G < 30 && c.B < 30) && !(c.R > 220 && c.G > 220 && c.B > 220) {
-				c.A = 255
-				counts[c]++
-			}
-		}
+	pairs := sortedColorCounts(small, func(c color.NRGBA) bool {
+		return c.A > 200 && !(c.R < 30 && c.G < 30 && c.B < 30) && !(c.R > 220 && c.G > 220 && c.B > 220)
+	})
+	if len(pairs) == 0 {
+		pairs = sortedColorCounts(small, func(c color.NRGBA) bool {
+			return c.A > 100
+		})
 	}
-	if len(counts) == 0 {
-		for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-			for x := bounds.Min.X; x < bounds.Max.X; x++ {
-				c := color.NRGBAModel.Convert(small.At(x, y)).(color.NRGBA)
-				if c.A > 100 {
-					c.A = 255
-					counts[c]++
-				}
-			}
-		}
-	}
-	type pair struct {
-		c color.NRGBA
-		n int
-	}
-	pairs := make([]pair, 0, len(counts))
-	for c, n := range counts {
-		pairs = append(pairs, pair{c: c, n: n})
-	}
-	sort.Slice(pairs, func(i, j int) bool { return pairs[i].n > pairs[j].n })
 	if len(pairs) == 0 {
 		return []color.NRGBA{{R: 150, G: 100, B: 50, A: 255}}
 	}
@@ -1012,16 +1030,18 @@ func addShadow(img image.Image, offset image.Point, shadowColor color.NRGBA, blu
 
 func createDiagonalMask(size image.Point, splitTop, splitBottom float64) *image.Alpha {
 	width, height := size.X, size.Y
+	topX := int(float64(width) * splitTop)
+	bottomX := int(float64(width) * splitBottom)
 	points := []pointF{
-		{X: float64(int(float64(width) * splitTop)), Y: 0},
-		{X: float64(width), Y: 0},
-		{X: float64(width), Y: float64(height)},
-		{X: float64(int(float64(width) * splitBottom)), Y: float64(height)},
+		{X: 0, Y: 0},
+		{X: float64(topX), Y: 0},
+		{X: float64(bottomX), Y: float64(height)},
+		{X: 0, Y: float64(height)},
 	}
 	return polygonMask(width, height, points)
 }
 
-func createShadowMask(size image.Point, splitTop, splitBottom float64, featherSize int) *image.Alpha {
+func createShadowMask(size image.Point, splitTop, splitBottom float64, featherSize int) image.Image {
 	width, height := size.X, size.Y
 	topX := int(float64(width) * splitTop)
 	bottomX := int(float64(width) * splitBottom)
@@ -1032,7 +1052,7 @@ func createShadowMask(size image.Point, splitTop, splitBottom float64, featherSi
 		{X: float64(bottomX - 5), Y: float64(height)},
 	}
 	mask := polygonMask(width, height, points)
-	return mask
+	return imaging.Blur(mask, float64(featherSize/3))
 }
 
 func closeFace(face font.Face) {
@@ -1057,7 +1077,7 @@ func maxInt(a, b int) int {
 }
 
 func scaleUint8(v uint8, factor float64) uint8 {
-	x := int(math.Round(float64(v) * factor))
+	x := int(float64(v) * factor)
 	if x < 0 {
 		return 0
 	}
@@ -1074,8 +1094,9 @@ func absInt(v int) int {
 	return v
 }
 
-// rotateBicubic rotates src by angle (degrees, counter-clockwise) and returns
-// a new NRGBA image sized to the rotated content's bounding box (expand=true).
+// rotateBicubic rotates src by angle (degrees, matching Pillow's
+// Image.rotate direction) and returns a new NRGBA image sized to the rotated
+// content's bounding box (expand=true).
 //
 // It uses golang.org/x/image/draw.CatmullRom (true bicubic resampling) instead
 // of disintegration/imaging.Rotate's bilinear kernel. The bilinear kernel was
@@ -1102,18 +1123,9 @@ func rotateBicubic(src image.Image, angle float64) *image.NRGBA {
 		return image.NewNRGBA(image.Rect(0, 0, 0, 0))
 	}
 
-	// Special-case 90/180/270 to avoid the affine setup entirely; these are
-	// lossless and have no edge artifacts.
-	switch {
-	case angle == 90:
-		return imaging.Rotate90(base)
-	case angle == 180:
-		return imaging.Rotate180(base)
-	case angle == 270:
-		return imaging.Rotate270(base)
-	}
-
-	rad := math.Pi * angle / 180.0
+	// Image coordinates grow downward on the Y axis. Negating the mathematical
+	// angle keeps positive degrees visually counter-clockwise, matching Pillow.
+	rad := -math.Pi * angle / 180.0
 	sin, cos := math.Sincos(rad)
 
 	// Forward map the source rectangle's four corners to find the destination

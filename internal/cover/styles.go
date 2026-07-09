@@ -28,9 +28,62 @@ func measureTextForFont(fontCache *fonts.Cache, path string, size float64, text 
 	return measureText(face, text), nil
 }
 
-func createStyleSingle1(imagePath string, title [2]string, fontPaths [2]string, fontCache *fonts.Cache, fontSize [2]float64, blurSize int, colorRatio float64, itemCount int, badge badgeConfig) ([]byte, error) {
-	zhFontPath, enFontPath := fontPaths[0], fontPaths[1]
+func drawSingleStyleTitleText(canvas *image.NRGBA, title [2]string, fontPaths [2]string, fontCache *fonts.Cache, fontSize [2]float64, bgColor color.NRGBA) (*image.NRGBA, error) {
 	titleZh, titleEn := title[0], title[1]
+	zhFontPath, enFontPath := fontPaths[0], fontPaths[1]
+	zhFontSizeRatio, enFontSizeRatio := fontSize[0], fontSize[1]
+
+	leftAreaCenterX := int(float64(styleCanvasSize.X) * 0.25)
+	leftAreaCenterY := styleCanvasSize.Y / 2
+	zhFontSize := int(float64(styleCanvasSize.Y) * 0.17 * zhFontSizeRatio)
+	enFontSize := int(float64(styleCanvasSize.Y) * 0.07 * enFontSizeRatio)
+
+	zhFace, err := fontCache.LoadFace(zhFontPath, float64(zhFontSize))
+	if err != nil {
+		return nil, err
+	}
+	defer closeFace(zhFace)
+
+	enFace, err := fontCache.LoadFace(enFontPath, float64(enFontSize))
+	if err != nil {
+		return nil, err
+	}
+	defer closeFace(enFace)
+
+	zhMetrics := measureText(zhFace, titleZh)
+	zhX := float64(leftAreaCenterX - zhMetrics.Width/2)
+	zhY := float64(leftAreaCenterY-zhMetrics.Height-enFontSize/2-5)
+
+	textLayer := image.NewNRGBA(canvas.Bounds())
+	shadowLayer := image.NewNRGBA(canvas.Bounds())
+	textColor := color.NRGBA{R: 255, G: 255, B: 255, A: 229}
+	textShadowColor := darkenColor(bgColor, 0.8)
+	textShadowColor.A = 75
+	shadowOffset := 12
+
+	for offset := 3; offset <= shadowOffset; offset += 2 {
+		drawString(shadowLayer, titleZh, zhX+float64(offset), zhY+float64(offset), zhFace, textShadowColor)
+	}
+	drawString(textLayer, titleZh, zhX, zhY, zhFace, textColor)
+
+	if strings.TrimSpace(titleEn) != "" {
+		enMetrics := measureText(enFace, titleEn)
+		enX := float64(leftAreaCenterX - enMetrics.Width/2)
+		enY := zhY + float64(zhMetrics.Height) + float64(enFontSize)
+		for offset := 2; offset <= shadowOffset/2; offset++ {
+			drawString(shadowLayer, titleEn, enX+float64(offset), enY+float64(offset), enFace, textShadowColor)
+		}
+		drawString(textLayer, titleEn, enX, enY, enFace, textColor)
+	}
+
+	blurredShadow := imaging.Blur(shadowLayer, float64(shadowOffset))
+	draw.Draw(canvas, canvas.Bounds(), blurredShadow, image.Point{}, draw.Over)
+	draw.Draw(canvas, canvas.Bounds(), textLayer, image.Point{}, draw.Over)
+	return canvas, nil
+}
+
+func createStyleSingle1(imagePath string, title [2]string, fontPaths [2]string, fontCache *fonts.Cache, fontSize [2]float64, blurSize int, colorRatio float64, itemCount int, badge badgeConfig) ([]byte, error) {
+	zhFontPath := fontPaths[0]
 	zhFontSizeRatio, enFontSizeRatio := fontSize[0], fontSize[1]
 
 	if blurSize < 0 {
@@ -102,13 +155,13 @@ func createStyleSingle1(imagePath string, title [2]string, fontPaths [2]string, 
 	cardSize := int(float64(styleCanvasSize.Y) * 0.7)
 	squareImg = imaging.Resize(squareImg, cardSize, cardSize, imaging.Lanczos)
 
-	mainCard := addRoundedCorners(squareImg, cardSize/8)
+	mainCard := addRoundedCornersHighRes(squareImg, cardSize/8)
 
 	auxCard1Bg := imaging.Blur(squareImg, 8)
-	auxCard1 := addRoundedCorners(blendWithColor(auxCard1Bg, cardColors[0], 0.5), cardSize/8)
+	auxCard1 := addRoundedCornersHighRes(blendWithColor(auxCard1Bg, cardColors[0], 0.5), cardSize/8)
 
 	auxCard2Bg := imaging.Blur(squareImg, 16)
-	auxCard2 := addRoundedCorners(blendWithColor(auxCard2Bg, cardColors[1], 0.6), cardSize/8)
+	auxCard2 := addRoundedCornersHighRes(blendWithColor(auxCard2Bg, cardColors[1], 0.6), cardSize/8)
 
 	centerPos := image.Pt(styleCanvasSize.X-int(float64(styleCanvasSize.Y)*0.5), styleCanvasSize.Y/2)
 	rotationAngles := []float64{36, 18, 0}
@@ -127,39 +180,9 @@ func createStyleSingle1(imagePath string, title [2]string, fontPaths [2]string, 
 	}
 	canvas = imaging.Overlay(canvas, cardsCanvas, image.Point{}, 1)
 
-	leftAreaCenterX := int(float64(styleCanvasSize.X) * 0.25)
-	leftAreaCenterY := styleCanvasSize.Y / 2
-	zhFontSize := int(float64(styleCanvasSize.Y) * 0.17 * zhFontSizeRatio)
-	enFontSize := int(float64(styleCanvasSize.Y) * 0.07 * enFontSizeRatio)
-	zhMetrics, err := measureTextForFont(fontCache, zhFontPath, float64(zhFontSize), titleZh)
+	canvas, err = drawSingleStyleTitleText(canvas, title, fontPaths, fontCache, [2]float64{zhFontSizeRatio, enFontSizeRatio}, bgColor)
 	if err != nil {
 		return nil, err
-	}
-	zhFace, err := fontCache.LoadFace(zhFontPath, float64(zhFontSize))
-	if err != nil {
-		return nil, err
-	}
-	closeFace(zhFace)
-	zhX := float64(leftAreaCenterX - zhMetrics.Width/2)
-	zhY := float64(leftAreaCenterY-zhMetrics.Height-enFontSize/2-5)
-	shadowColor := darkenColor(bgColor, 0.8)
-	shadowColor.A = 75
-	canvas, err = drawTextOnImage(canvas, titleZh, pointF{X: zhX, Y: zhY}, fontCache, zhFontPath, zhFontSize, color.NRGBA{R: 255, G: 255, B: 255, A: 229}, true, shadowColor, 12, 75)
-	if err != nil {
-		return nil, err
-	}
-
-	if strings.TrimSpace(titleEn) != "" {
-		enMetrics, err := measureTextForFont(fontCache, enFontPath, float64(enFontSize), titleEn)
-		if err != nil {
-			return nil, err
-		}
-		enX := float64(leftAreaCenterX - enMetrics.Width/2)
-		enY := zhY + float64(zhMetrics.Height) + float64(enFontSize)
-		canvas, err = drawTextOnImage(canvas, titleEn, pointF{X: enX, Y: enY}, fontCache, enFontPath, enFontSize, color.NRGBA{R: 255, G: 255, B: 255, A: 229}, true, shadowColor, 12, 75)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	if badge.Show && itemCount > 0 {
@@ -173,8 +196,7 @@ func createStyleSingle1(imagePath string, title [2]string, fontPaths [2]string, 
 }
 
 func createStyleSingle2(imagePath string, title [2]string, fontPaths [2]string, fontCache *fonts.Cache, fontSize [2]float64, blurSize int, colorRatio float64, itemCount int, badge badgeConfig) ([]byte, error) {
-	zhFontPath, enFontPath := fontPaths[0], fontPaths[1]
-	titleZh, titleEn := title[0], title[1]
+	zhFontPath := fontPaths[0]
 	zhFontSizeRatio, enFontSizeRatio := fontSize[0], fontSize[1]
 
 	if blurSize < 0 {
@@ -223,38 +245,14 @@ func createStyleSingle2(imagePath string, title [2]string, fontPaths [2]string, 
 	canvas := image.NewNRGBA(image.Rect(0, 0, styleCanvasSize.X, styleCanvasSize.Y))
 	draw.Draw(canvas, canvas.Bounds(), fgImg, image.Point{}, draw.Over)
 	tempCanvas := imaging.Clone(canvas)
-	shadowLayer := imaging.New(styleCanvasSize.X, styleCanvasSize.Y, color.NRGBA{0, 0, 0, 100})
+	shadowLayer := imaging.New(styleCanvasSize.X, styleCanvasSize.Y, color.NRGBA{R: shadowColor.R, G: shadowColor.G, B: shadowColor.B, A: 255})
 	draw.DrawMask(tempCanvas, tempCanvas.Bounds(), shadowLayer, image.Point{}, shadowMask, image.Point{}, draw.Over)
 	finalCanvas := imaging.Clone(tempCanvas)
 	draw.DrawMask(finalCanvas, finalCanvas.Bounds(), blendedBgImg, image.Point{}, diagonalMask, image.Point{}, draw.Over)
 
-	leftAreaCenterX := int(float64(styleCanvasSize.X) * 0.25)
-	leftAreaCenterY := styleCanvasSize.Y / 2
-	zhFontSize := int(float64(styleCanvasSize.Y) * 0.17 * zhFontSizeRatio)
-	enFontSize := int(float64(styleCanvasSize.Y) * 0.07 * enFontSizeRatio)
-	zhMetrics, err := measureTextForFont(fontCache, zhFontPath, float64(zhFontSize), titleZh)
+	finalCanvas, err = drawSingleStyleTitleText(finalCanvas, title, fontPaths, fontCache, [2]float64{zhFontSizeRatio, enFontSizeRatio}, bgColor)
 	if err != nil {
 		return nil, err
-	}
-	zhX := float64(leftAreaCenterX - zhMetrics.Width/2)
-	zhY := float64(leftAreaCenterY-zhMetrics.Height-enFontSize/2-5)
-	shadowColor.A = 75
-	finalCanvas, err = drawTextOnImage(finalCanvas, titleZh, pointF{X: zhX, Y: zhY}, fontCache, zhFontPath, zhFontSize, color.NRGBA{R: 255, G: 255, B: 255, A: 229}, true, shadowColor, 12, 75)
-	if err != nil {
-		return nil, err
-	}
-
-	if strings.TrimSpace(titleEn) != "" {
-		enMetrics, err := measureTextForFont(fontCache, enFontPath, float64(enFontSize), titleEn)
-		if err != nil {
-			return nil, err
-		}
-		enX := float64(leftAreaCenterX - enMetrics.Width/2)
-		enY := zhY + float64(zhMetrics.Height) + float64(enFontSize)
-		finalCanvas, err = drawTextOnImage(finalCanvas, titleEn, pointF{X: enX, Y: enY}, fontCache, enFontPath, enFontSize, color.NRGBA{R: 255, G: 255, B: 255, A: 229}, true, shadowColor, 12, 75)
-		if err != nil {
-			return nil, err
-		}
 	}
 
 	if badge.Show && itemCount > 0 {
