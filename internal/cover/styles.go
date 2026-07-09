@@ -426,7 +426,7 @@ func createStyleMulti1(libraryDir string, title [2]string, fontPaths [2]string, 
 			columnCenterX += cellWidth - 50
 		} else if colIndex == 2 {
 			columnCenterY += -155
-			columnCenterX += cellWidth*2 - 40
+			columnCenterX += cellWidth*2 - 100
 		}
 		finalX := columnCenterX - rotatedColumn.Bounds().Dx()/2
 		finalY := columnCenterY - rotatedColumn.Bounds().Dy()/2
