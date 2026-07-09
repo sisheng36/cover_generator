@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -39,6 +40,7 @@ type Server struct {
 	coverSvc    *cover.Service
 	notifierSvc *notifier.Service
 	scheduler   *scheduler.Manager
+	autoCover   *autoCoverScheduler
 	httpServer  *http.Server
 	addr        string
 	staticDir   string
@@ -50,6 +52,23 @@ type libraryGenerateItem struct {
 	cover.Result
 }
 
+type autoCoverStatusItem struct {
+	LibraryID        string `json:"library_id"`
+	LibraryName      string `json:"library_name"`
+	ScheduledAt      string `json:"scheduled_at"`
+	DueAt            string `json:"due_at"`
+	RemainingSeconds int    `json:"remaining_seconds"`
+	RemainingText    string `json:"remaining_text"`
+}
+
+type autoCoverStatusResponse struct {
+	Enabled       bool                  `json:"enabled"`
+	WindowSeconds int                   `json:"window_seconds"`
+	PendingCount  int                   `json:"pending_count"`
+	NextDueAt     string                `json:"next_due_at,omitempty"`
+	Pending       []autoCoverStatusItem `json:"pending"`
+}
+
 func New(addr string) *Server {
 	cfg := config.Load()
 	fontCache := fonts.NewCache()
@@ -59,6 +78,7 @@ func New(addr string) *Server {
 		coverSvc:    cover.NewService(fontCache),
 		notifierSvc: notifier.NewService(),
 		scheduler:   scheduler.New(),
+		autoCover:   newAutoCoverScheduler(),
 		addr:        normalizeAddr(addr),
 		staticDir:   resolveAssetDir("static"),
 		imagesDir:   resolveAssetDir("images"),
@@ -98,6 +118,7 @@ func (s *Server) Run(ctx context.Context) error {
 	mux.HandleFunc("/api/scheduler/restart", s.handleSchedulerRestart)
 	mux.HandleFunc("/api/health", s.handleHealth)
 	mux.HandleFunc("/api/mem", s.handleMem)
+	mux.HandleFunc("/api/auto_cover/status", s.handleAutoCoverStatus)
 	mux.HandleFunc("/webhook/emby", s.handleWebhook)
 
 	srv := &http.Server{
@@ -116,6 +137,7 @@ func (s *Server) Run(ctx context.Context) error {
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		s.scheduler.Stop()
+		s.autoCover.Stop()
 		s.notifierSvc.Stop()
 		shutdownErr := srv.Shutdown(shutdownCtx)
 		listenErr := <-errCh
@@ -128,6 +150,7 @@ func (s *Server) Run(ctx context.Context) error {
 		return nil
 	case err := <-errCh:
 		s.scheduler.Stop()
+		s.autoCover.Stop()
 		s.notifierSvc.Stop()
 		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			return err
@@ -287,6 +310,7 @@ func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
 
 	s.updateConfig(cfg)
 	s.scheduler.Start(cfg.SchedulerEnabled, cfg.SchedulerCron, s.scheduledGenerate)
+	s.autoCover.Reconcile(cfg.NewImportCoverEnabled, cfg.SelectedLibraries)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"ok":      true,
 		"message": "配置已保存",
@@ -570,11 +594,70 @@ func (s *Server) handleMem(w http.ResponseWriter, r *http.Request) {
 	}
 	dedupeSize, pendingKeys := s.notifierSvc.Stats()
 	writeJSON(w, http.StatusOK, map[string]any{
-		"rss_mb":              rssValue,
-		"font_cache_size":     s.fontCache.Size(),
-		"dedupe_cache_size":   dedupeSize,
-		"pending_messages_keys": pendingKeys,
+		"rss_mb":                  rssValue,
+		"font_cache_size":         s.fontCache.Size(),
+		"dedupe_cache_size":       dedupeSize,
+		"pending_messages_keys":   pendingKeys,
+		"auto_cover_pending_keys": s.autoCover.Pending(),
 	})
+}
+
+func (s *Server) handleAutoCoverStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w, http.MethodGet)
+		return
+	}
+
+	cfg := s.currentConfig()
+	snapshots := s.autoCover.Snapshot()
+	items := make([]autoCoverStatusItem, 0, len(snapshots))
+	var nextDue time.Time
+
+	nameByID := map[string]string{}
+	if cfg.EmbyServerURL != "" && cfg.EmbyAPIKey != "" {
+		client := emby.New(cfg.EmbyServerURL, cfg.EmbyAPIKey)
+		if libraries, err := client.GetLibraries(r.Context()); err == nil {
+			for _, library := range libraries {
+				nameByID[itemID(library)] = asString(library["Name"])
+			}
+		}
+	}
+
+	sort.Slice(snapshots, func(i, j int) bool {
+		return snapshots[i].dueAt.Before(snapshots[j].dueAt)
+	})
+	for _, snapshot := range snapshots {
+		if nextDue.IsZero() || snapshot.dueAt.Before(nextDue) {
+			nextDue = snapshot.dueAt
+		}
+		remaining := time.Until(snapshot.dueAt)
+		if remaining < 0 {
+			remaining = 0
+		}
+		remainingSeconds := int(remaining / time.Second)
+		if remaining > 0 && remaining%time.Second != 0 {
+			remainingSeconds++
+		}
+		items = append(items, autoCoverStatusItem{
+			LibraryID:        snapshot.libraryID,
+			LibraryName:      firstNonEmpty(nameByID[snapshot.libraryID], snapshot.libraryID),
+			ScheduledAt:      snapshot.scheduledAt.Format("2006-01-02 15:04:05"),
+			DueAt:            snapshot.dueAt.Format("2006-01-02 15:04:05"),
+			RemainingSeconds: remainingSeconds,
+			RemainingText:    formatDurationText(remaining),
+		})
+	}
+
+	payload := autoCoverStatusResponse{
+		Enabled:       cfg.NewImportCoverEnabled,
+		WindowSeconds: cfg.NewImportCoverWindow,
+		PendingCount:  len(items),
+		Pending:       items,
+	}
+	if !nextDue.IsZero() {
+		payload.NextDueAt = nextDue.Format("2006-01-02 15:04:05")
+	}
+	writeJSON(w, http.StatusOK, payload)
 }
 
 func (s *Server) handleWebhook(w http.ResponseWriter, r *http.Request) {
@@ -589,7 +672,11 @@ func (s *Server) handleWebhook(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "message": "invalid JSON"})
 		return
 	}
-	result := s.notifierSvc.HandleWebhook(r.Context(), data, s.currentConfig())
+	cfg := s.currentConfig()
+	if event := notifier.ParseWebhook(data); event != nil {
+		s.maybeScheduleAutoCover(event, cfg)
+	}
+	result := s.notifierSvc.HandleWebhook(r.Context(), data, cfg)
 	log.Printf("Webhook 处理结果: %s", result)
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "message": result})
 }
@@ -698,6 +785,34 @@ func formFloat(r *http.Request, key string, fallback float64) float64 {
 
 func encodeBase64(data []byte) string {
 	return base64.StdEncoding.EncodeToString(data)
+}
+
+func formatDurationText(d time.Duration) string {
+	if d < 0 {
+		d = 0
+	}
+	totalSeconds := int(d / time.Second)
+	days := totalSeconds / 86400
+	totalSeconds %= 86400
+	hours := totalSeconds / 3600
+	totalSeconds %= 3600
+	minutes := totalSeconds / 60
+	seconds := totalSeconds % 60
+
+	parts := make([]string, 0, 4)
+	if days > 0 {
+		parts = append(parts, fmt.Sprintf("%d天", days))
+	}
+	if hours > 0 {
+		parts = append(parts, fmt.Sprintf("%d小时", hours))
+	}
+	if minutes > 0 {
+		parts = append(parts, fmt.Sprintf("%d分", minutes))
+	}
+	if seconds > 0 || len(parts) == 0 {
+		parts = append(parts, fmt.Sprintf("%d秒", seconds))
+	}
+	return strings.Join(parts, "")
 }
 
 func memoryRSSMB() (float64, bool) {

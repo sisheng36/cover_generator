@@ -185,7 +185,7 @@ h1{font-size:30px;font-weight:700;margin-bottom:8px}
 
     <div class="card">
       <h2>要选择的库</h2>
-      <p class="section-desc">选中的媒体库会用于手动生成和定时任务。</p>
+      <p class="section-desc">选中的媒体库会用于手动生成、定时任务和新入库联动更新。</p>
       <div class="actions" style="margin-bottom:14px">
         <button class="btn btn-secondary" onclick="loadLibraries(true)">刷新媒体库</button>
         <button class="btn btn-secondary" onclick="setAllLibraries(true)">全选</button>
@@ -410,7 +410,7 @@ h1{font-size:30px;font-weight:700;margin-bottom:8px}
   <section id="page-notify" class="page">
     <div class="card">
       <h2>入库通知</h2>
-      <p class="section-desc">配置 Telegram 通知和 Webhook 事件。</p>
+      <p class="section-desc">配置 Telegram 通知、Webhook 事件和新入库联动封面更新。</p>
       <div class="toggle-row">
         <input id="notification_enabled" type="checkbox">
         <label for="notification_enabled">启用 Telegram 通知</label>
@@ -445,6 +445,25 @@ h1{font-size:30px;font-weight:700;margin-bottom:8px}
           <div class="hint">开启后，同一剧集短时间内入库会合并成一条消息。</div>
         </div>
       </div>
+      <div class="form-grid" style="margin-top:18px">
+        <div class="form-group">
+          <label for="new_import_cover_window">新入库窗口期（秒）</label>
+          <input id="new_import_cover_window" type="number" min="60" max="3600" placeholder="300">
+          <div class="hint">默认 300 秒，也就是 5 分钟。窗口内同一媒体库再次入库会重新计时。</div>
+        </div>
+        <div class="form-group" style="justify-content:flex-end">
+          <div class="toggle-row" style="margin-top:28px">
+            <input id="new_import_cover_enabled" type="checkbox">
+            <label for="new_import_cover_enabled">新入库时更新媒体封面</label>
+          </div>
+          <div class="hint">开启后，选中的媒体库有新剧集或电影入库时会自动联动更新封面。</div>
+        </div>
+      </div>
+      <div class="card" style="margin:18px 0 0;padding:18px">
+        <h3>当前待触发窗口</h3>
+        <div id="autoCoverStatusSummary" class="status-bar"></div>
+        <div id="autoCoverStatusList" class="result-list"></div>
+      </div>
     </div>
 
     <div class="card">
@@ -467,7 +486,10 @@ const state = {
   libraries: [],
   selectedFile: null,
   currentResultBase64: null,
+  autoCoverStatusLoading: false,
 };
+
+let autoCoverStatusTimer = null;
 
 const notifyEvents = [
   { value: 'library.new|ItemAdded', label: '新入库' },
@@ -487,6 +509,10 @@ const styleOptions = [
 function switchPage(page){
   document.querySelectorAll('.tab-btn').forEach(btn=>btn.classList.toggle('active', btn.dataset.page===page));
   document.querySelectorAll('.page').forEach(el=>el.classList.toggle('active', el.id===`page-${page}`));
+  syncAutoCoverStatusPolling();
+  if(page === 'notify'){
+    loadAutoCoverStatus();
+  }
 }
 
 function switchCoverTab(tab){
@@ -636,13 +662,14 @@ function applyConfigToForm(){
     'single_blur_size','single_color_ratio','single_zh_font_size','single_en_font_size',
     'single_badge_size_ratio','multi_blur_size','multi_color_ratio','multi_zh_font_size',
     'multi_en_font_size','multi_badge_size_ratio','scheduler_cron','tg_token','tg_chat_id',
-    'aggregate_time'
+    'aggregate_time','new_import_cover_window'
   ].forEach(id=>setInputValue(id, cfg[id]));
 
   document.getElementById('scheduler_enabled').checked = Boolean(cfg.scheduler_enabled);
   document.getElementById('notification_enabled').checked = Boolean(cfg.notification_enabled);
   document.getElementById('custom_library_titles_enabled').checked = Boolean(cfg.custom_library_titles_enabled);
   document.getElementById('aggregate_enabled').checked = Boolean(cfg.aggregate_enabled);
+  document.getElementById('new_import_cover_enabled').checked = Boolean(cfg.new_import_cover_enabled);
 
   setInputValue('single_use_primary', String(Boolean(cfg.single_use_primary)));
   setInputValue('single_show_item_count', String(Boolean(cfg.single_show_item_count)));
@@ -730,6 +757,8 @@ function collectConfigPayload(){
     notify_types: getSelectedNotifyTypes(),
     aggregate_enabled: document.getElementById('aggregate_enabled').checked,
     aggregate_time: document.getElementById('aggregate_time').value.trim(),
+    new_import_cover_window: document.getElementById('new_import_cover_window').value.trim(),
+    new_import_cover_enabled: document.getElementById('new_import_cover_enabled').checked,
   };
 
   [
@@ -740,6 +769,7 @@ function collectConfigPayload(){
     if(value !== '')payload[id] = Number(value);
   });
   if(payload.aggregate_time !== '')payload.aggregate_time = Number(payload.aggregate_time);
+  if(payload.new_import_cover_window !== '')payload.new_import_cover_window = Number(payload.new_import_cover_window);
 
   return payload;
 }
@@ -757,6 +787,7 @@ async function saveConfig(silent=false){
     state.config = data.config || payload;
     applyConfigToForm();
     await loadSchedulerStatus();
+    await loadAutoCoverStatus();
     if(hasEmbyConfig())await loadLibraries(true);
     if(!silent)showToast('配置已保存并重新加载到页面', 'success');
     return true;
@@ -865,6 +896,73 @@ async function restartScheduler(){
 
 function showWebhookUrl(){
   document.getElementById('webhookUrl').textContent = `${window.location.origin}/webhook/emby`;
+}
+
+function renderAutoCoverStatus(data){
+  const summary = document.getElementById('autoCoverStatusSummary');
+  const list = document.getElementById('autoCoverStatusList');
+  const windowSeconds = Number(data?.window_seconds || 0) || 300;
+  const pending = Array.isArray(data?.pending) ? data.pending : [];
+
+  if(data?.enabled){
+    if(pending.length){
+      summary.className = 'status-bar success';
+      summary.textContent = `新入库联动已开启，窗口期 ${windowSeconds} 秒，当前有 ${pending.length} 个媒体库待触发${data.next_due_at ? `，最近一次将在 ${data.next_due_at} 执行` : ''}。`;
+    }else{
+      summary.className = 'status-bar info';
+      summary.textContent = `新入库联动已开启，窗口期 ${windowSeconds} 秒，当前没有待触发的媒体库。`;
+    }
+  }else{
+    summary.className = 'status-bar info';
+    summary.textContent = `新入库联动当前关闭。开启后会按 ${windowSeconds} 秒窗口合并同一媒体库的连续入库事件。`;
+  }
+
+  if(!pending.length){
+    list.innerHTML = '<div class="empty-note">当前没有排队中的媒体库。新的电影或剧集入库后，这里会显示等待触发的封面刷新任务。</div>';
+    return;
+  }
+
+  list.innerHTML = pending.map(item=>`
+    <div class="result-item">
+      <strong>${escapeHtml(item.library_name || item.library_id || '未知媒体库')}</strong>
+      <div style="margin-top:4px;color:var(--muted)">计划触发时间：${escapeHtml(item.due_at || '未知')}，剩余 ${escapeHtml(item.remaining_text || '0秒')}</div>
+      <div style="margin-top:2px;color:var(--muted)">加入窗口时间：${escapeHtml(item.scheduled_at || '未知')}</div>
+    </div>
+  `).join('');
+}
+
+async function loadAutoCoverStatus(silent=true){
+  if(state.autoCoverStatusLoading)return;
+  state.autoCoverStatusLoading = true;
+  try{
+    const response = await fetch('/api/auto_cover/status');
+    if(!response.ok)throw new Error('自动封面状态读取失败');
+    const data = await response.json();
+    renderAutoCoverStatus(data);
+  }catch(error){
+    const summary = document.getElementById('autoCoverStatusSummary');
+    const list = document.getElementById('autoCoverStatusList');
+    summary.className = 'status-bar error';
+    summary.textContent = `读取新入库联动状态失败: ${error.message}`;
+    list.innerHTML = '<div class="empty-note">暂时无法读取状态，请稍后重试。</div>';
+    if(!silent)showToast(`读取新入库联动状态失败: ${error.message}`, 'error');
+  }finally{
+    state.autoCoverStatusLoading = false;
+  }
+}
+
+function syncAutoCoverStatusPolling(){
+  const notifyPageActive = document.getElementById('page-notify')?.classList.contains('active');
+  if(notifyPageActive){
+    if(autoCoverStatusTimer === null){
+      autoCoverStatusTimer = window.setInterval(()=>loadAutoCoverStatus(), 5000);
+    }
+    return;
+  }
+  if(autoCoverStatusTimer !== null){
+    window.clearInterval(autoCoverStatusTimer);
+    autoCoverStatusTimer = null;
+  }
 }
 
 // ========== Bing 每日壁纸 ==========
@@ -984,6 +1082,8 @@ async function initialize(){
   }
   await loadLibraries(true);
   await loadSchedulerStatus();
+  await loadAutoCoverStatus();
+  syncAutoCoverStatusPolling();
   // 版本号独立请求，不阻塞其它初始化流程
   loadAppVersion();
   // Bing 壁纸不阻塞主流程

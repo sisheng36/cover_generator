@@ -8,8 +8,8 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"image/jpeg"
 	"image/draw"
+	"image/jpeg"
 	"io"
 	"log"
 	"net/http"
@@ -27,7 +27,7 @@ import (
 	_ "golang.org/x/image/webp"
 )
 
-const itemFields = "Id,Name,Type,Path,ProviderIds,ImageTags,BackdropImageTags,PrimaryImageTag,PrimaryImageItemId,ParentBackdropImageTags,ParentBackdropItemId,SeriesPrimaryImageTag,SeriesId,SeriesName,ProductionYear,Overview,ChildCount,RecursiveItemCount"
+const itemFields = "Id,Name,Type,Path,ParentId,ProviderIds,ImageTags,BackdropImageTags,PrimaryImageTag,PrimaryImageItemId,ParentBackdropImageTags,ParentBackdropItemId,SeriesPrimaryImageTag,SeriesId,SeriesName,ProductionYear,Overview,ChildCount,RecursiveItemCount"
 
 type Client struct {
 	baseURL string

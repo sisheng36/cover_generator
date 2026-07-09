@@ -28,26 +28,26 @@ type Config struct {
 	ZhFontPath        string   `json:"zh_font_path"`
 	EnFontPath        string   `json:"en_font_path"`
 
-	CustomLibraryTitlesEnabled bool                    `json:"custom_library_titles_enabled"`
+	CustomLibraryTitlesEnabled bool                     `json:"custom_library_titles_enabled"`
 	LibraryTitleOverrides      map[string]TitleOverride `json:"library_title_overrides"`
 
-	SingleUsePrimary   bool    `json:"single_use_primary"`
-	SingleBlurSize     int     `json:"single_blur_size"`
-	SingleColorRatio   float64 `json:"single_color_ratio"`
-	SingleZhFontSize   float64 `json:"single_zh_font_size"`
-	SingleEnFontSize   float64 `json:"single_en_font_size"`
-	SingleShowItemCount bool   `json:"single_show_item_count"`
-	SingleBadgeStyle   string  `json:"single_badge_style"`
+	SingleUsePrimary     bool    `json:"single_use_primary"`
+	SingleBlurSize       int     `json:"single_blur_size"`
+	SingleColorRatio     float64 `json:"single_color_ratio"`
+	SingleZhFontSize     float64 `json:"single_zh_font_size"`
+	SingleEnFontSize     float64 `json:"single_en_font_size"`
+	SingleShowItemCount  bool    `json:"single_show_item_count"`
+	SingleBadgeStyle     string  `json:"single_badge_style"`
 	SingleBadgeSizeRatio float64 `json:"single_badge_size_ratio"`
 
-	Multi1Blur         bool    `json:"multi_1_blur"`
+	Multi1Blur          bool    `json:"multi_1_blur"`
 	Multi1UsePrimary    bool    `json:"multi_1_use_primary"`
-	MultiBlurSize      int     `json:"multi_blur_size"`
-	MultiColorRatio    float64 `json:"multi_color_ratio"`
-	MultiZhFontSize    float64 `json:"multi_zh_font_size"`
-	MultiEnFontSize    float64 `json:"multi_en_font_size"`
-	MultiShowItemCount bool    `json:"multi_show_item_count"`
-	MultiBadgeStyle    string  `json:"multi_badge_style"`
+	MultiBlurSize       int     `json:"multi_blur_size"`
+	MultiColorRatio     float64 `json:"multi_color_ratio"`
+	MultiZhFontSize     float64 `json:"multi_zh_font_size"`
+	MultiEnFontSize     float64 `json:"multi_en_font_size"`
+	MultiShowItemCount  bool    `json:"multi_show_item_count"`
+	MultiBadgeStyle     string  `json:"multi_badge_style"`
 	MultiBadgeSizeRatio float64 `json:"multi_badge_size_ratio"`
 
 	NotificationEnabled bool     `json:"notification_enabled"`
@@ -56,11 +56,13 @@ type Config struct {
 	TmdbAPIKey          string   `json:"tmdb_api_key"`
 	NotifyTypes         []string `json:"notify_types"`
 
-	AggregateEnabled bool   `json:"aggregate_enabled"`
-	AggregateTime    int    `json:"aggregate_time"`
-	SchedulerEnabled bool   `json:"scheduler_enabled"`
-	SchedulerCron    string `json:"scheduler_cron"`
-	ScheduledLibraries []string `json:"scheduled_libraries"`
+	AggregateEnabled      bool     `json:"aggregate_enabled"`
+	AggregateTime         int      `json:"aggregate_time"`
+	NewImportCoverWindow  int      `json:"new_import_cover_window"`
+	NewImportCoverEnabled bool     `json:"new_import_cover_enabled"`
+	SchedulerEnabled      bool     `json:"scheduler_enabled"`
+	SchedulerCron         string   `json:"scheduler_cron"`
+	ScheduledLibraries    []string `json:"scheduled_libraries"`
 }
 
 func Default() Config {
@@ -79,23 +81,23 @@ func Default() Config {
 		CustomLibraryTitlesEnabled: false,
 		LibraryTitleOverrides:      map[string]TitleOverride{},
 
-		SingleUsePrimary:    true,
-		SingleBlurSize:      50,
-		SingleColorRatio:    0.8,
-		SingleZhFontSize:    1.0,
-		SingleEnFontSize:    1.0,
-		SingleShowItemCount: false,
-		SingleBadgeStyle:    "badge",
+		SingleUsePrimary:     true,
+		SingleBlurSize:       50,
+		SingleColorRatio:     0.8,
+		SingleZhFontSize:     1.0,
+		SingleEnFontSize:     1.0,
+		SingleShowItemCount:  false,
+		SingleBadgeStyle:     "badge",
 		SingleBadgeSizeRatio: 0.12,
 
-		Multi1Blur:         false,
+		Multi1Blur:          false,
 		Multi1UsePrimary:    true,
-		MultiBlurSize:      50,
-		MultiColorRatio:    0.8,
-		MultiZhFontSize:    1.0,
-		MultiEnFontSize:    1.0,
-		MultiShowItemCount: false,
-		MultiBadgeStyle:    "badge",
+		MultiBlurSize:       50,
+		MultiColorRatio:     0.8,
+		MultiZhFontSize:     1.0,
+		MultiEnFontSize:     1.0,
+		MultiShowItemCount:  false,
+		MultiBadgeStyle:     "badge",
 		MultiBadgeSizeRatio: 0.12,
 
 		NotificationEnabled: false,
@@ -104,11 +106,13 @@ func Default() Config {
 		TmdbAPIKey:          "",
 		NotifyTypes:         []string{},
 
-		AggregateEnabled: true,
-		AggregateTime:    15,
-		SchedulerEnabled: false,
-		SchedulerCron:    "0 4 * * *",
-		ScheduledLibraries: []string{},
+		AggregateEnabled:      true,
+		AggregateTime:         15,
+		NewImportCoverWindow:  300,
+		NewImportCoverEnabled: false,
+		SchedulerEnabled:      false,
+		SchedulerCron:         "0 4 * * *",
+		ScheduledLibraries:    []string{},
 	}
 }
 
@@ -306,6 +310,12 @@ func Normalize(raw map[string]any) Config {
 	if v, ok := raw["aggregate_time"]; ok {
 		cfg.AggregateTime = asInt(v, cfg.AggregateTime)
 	}
+	if v, ok := raw["new_import_cover_window"]; ok {
+		cfg.NewImportCoverWindow = asInt(v, cfg.NewImportCoverWindow)
+	}
+	if v, ok := raw["new_import_cover_enabled"]; ok {
+		cfg.NewImportCoverEnabled = asBool(v, cfg.NewImportCoverEnabled)
+	}
 	if v, ok := raw["scheduler_enabled"]; ok {
 		cfg.SchedulerEnabled = asBool(v, cfg.SchedulerEnabled)
 	}
@@ -356,6 +366,9 @@ func Normalize(raw map[string]any) Config {
 	}
 	if cfg.SchedulerCron == "" {
 		cfg.SchedulerCron = defaults.SchedulerCron
+	}
+	if cfg.NewImportCoverWindow <= 0 {
+		cfg.NewImportCoverWindow = defaults.NewImportCoverWindow
 	}
 
 	if cfg.LibraryTitleOverrides == nil {

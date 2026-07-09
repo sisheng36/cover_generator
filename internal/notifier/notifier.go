@@ -29,18 +29,18 @@ var (
 		regexp.MustCompile(`(?i)tmdbid[=:-](\d+)`),
 	}
 	webhookActions = map[string]string{
-		"library.new":             "新入库",
-		"ItemAdded":               "新入库",
-		"system.notificationtest": "测试",
-		"playback.start":          "开始播放",
-		"playback.stop":           "停止播放",
-		"user.authenticated":      "登录成功",
+		"library.new":               "新入库",
+		"ItemAdded":                 "新入库",
+		"system.notificationtest":   "测试",
+		"playback.start":            "开始播放",
+		"playback.stop":             "停止播放",
+		"user.authenticated":        "登录成功",
 		"user.authenticationfailed": "登录失败",
-		"media.play":              "开始播放",
-		"media.stop":              "停止播放",
-		"PlaybackStart":           "开始播放",
-		"PlaybackStop":            "停止播放",
-		"item.rate":               "标记了",
+		"media.play":                "开始播放",
+		"media.stop":                "停止播放",
+		"PlaybackStart":             "开始播放",
+		"PlaybackStop":              "停止播放",
+		"item.rate":                 "标记了",
 	}
 	mediaIcons = map[string]string{
 		"MOV": "🎬",
@@ -70,10 +70,10 @@ type Event struct {
 }
 
 type Service struct {
-	mu               sync.Mutex
-	pendingMessages  map[string][]Event
-	aggregateTimers  map[string]*time.Timer
-	dedupeCache      map[string]time.Time
+	mu              sync.Mutex
+	pendingMessages map[string][]Event
+	aggregateTimers map[string]*time.Timer
+	dedupeCache     map[string]time.Time
 }
 
 const (
@@ -385,7 +385,7 @@ func resolveTMDBRatingLine(tmdbInfo map[string]any) string {
 	return ratingLine
 }
 
-func parseEmbyWebhook(data map[string]any) *Event {
+func ParseWebhook(data map[string]any) *Event {
 	event := asString(data["Event"])
 	if event == "" {
 		event = asString(data["event"])
@@ -403,13 +403,13 @@ func parseEmbyWebhook(data map[string]any) *Event {
 
 	itemTypeRaw := strings.ToUpper(asString(item["Type"]))
 	mediaTypeMap := map[string]string{
-		"MOVIE": "MOV",
-		"MOV":   "MOV",
-		"EPISODE": "TV",
-		"TV":       "TV",
-		"SHOW":     "TV",
-		"MUSIC":    "AUD",
-		"AUDIO":    "AUD",
+		"MOVIE":     "MOV",
+		"MOV":       "MOV",
+		"EPISODE":   "TV",
+		"TV":        "TV",
+		"SHOW":      "TV",
+		"MUSIC":     "AUD",
+		"AUDIO":     "AUD",
 		"AUDIOBOOK": "AUD",
 		"BOXSET":    "BOX",
 	}
@@ -680,7 +680,7 @@ func (s *Service) HandleWebhook(ctx context.Context, data map[string]any, cfg co
 	if !cfg.NotificationEnabled {
 		return "notifier disabled"
 	}
-	event := parseEmbyWebhook(data)
+	event := ParseWebhook(data)
 	if event == nil {
 		return "unparseable webhook"
 	}
