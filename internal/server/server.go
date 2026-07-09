@@ -60,7 +60,7 @@ func New(addr string) *Server {
 		notifierSvc: notifier.NewService(),
 		scheduler:   scheduler.New(),
 		addr:        normalizeAddr(addr),
-		staticDir:   resolveAssetDir(filepath.Join("app", "static")),
+		staticDir:   resolveAssetDir("static"),
 		imagesDir:   resolveAssetDir("images"),
 	}
 }

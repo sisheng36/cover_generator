@@ -26,14 +26,12 @@ func Get() string {
 
 func versionCandidates() []string {
 	candidates := []string{
-		filepath.Join("app", "VERSION"),
 		"VERSION",
 	}
 
 	if cwd, err := os.Getwd(); err == nil {
 		dir := cwd
 		for i := 0; i < 4; i++ {
-			candidates = append(candidates, filepath.Join(dir, "app", "VERSION"))
 			candidates = append(candidates, filepath.Join(dir, "VERSION"))
 			parent := filepath.Dir(dir)
 			if parent == dir {
@@ -46,7 +44,6 @@ func versionCandidates() []string {
 	if exe, err := os.Executable(); err == nil {
 		dir := filepath.Dir(exe)
 		for i := 0; i < 4; i++ {
-			candidates = append(candidates, filepath.Join(dir, "app", "VERSION"))
 			candidates = append(candidates, filepath.Join(dir, "VERSION"))
 			parent := filepath.Dir(dir)
 			if parent == dir {
