@@ -1191,3 +1191,93 @@ func rotateBicubic(src image.Image, angle float64) *image.NRGBA {
 	)
 	return dst
 }
+
+func div255(v int) uint8 {
+	v += 128
+	return uint8((v + (v >> 8)) >> 8)
+}
+
+func pasteWithAlphaMask(dst *image.NRGBA, src image.Image, pt image.Point) {
+	if dst == nil || src == nil {
+		return
+	}
+	base := toNRGBA(src)
+	srcB := base.Bounds()
+	target := image.Rectangle{Min: pt, Max: pt.Add(srcB.Size())}.Intersect(dst.Bounds())
+	if target.Empty() {
+		return
+	}
+
+	srcStart := srcB.Min.Add(target.Min.Sub(pt))
+	for y := 0; y < target.Dy(); y++ {
+		dy := target.Min.Y + y
+		sy := srcStart.Y + y
+		for x := 0; x < target.Dx(); x++ {
+			dx := target.Min.X + x
+			sx := srcStart.X + x
+			si := base.PixOffset(sx, sy)
+			mask := int(base.Pix[si+3])
+			if mask == 0 {
+				continue
+			}
+			di := dst.PixOffset(dx, dy)
+			if mask == 255 {
+				dst.Pix[di+0] = base.Pix[si+0]
+				dst.Pix[di+1] = base.Pix[si+1]
+				dst.Pix[di+2] = base.Pix[si+2]
+				dst.Pix[di+3] = base.Pix[si+3]
+				continue
+			}
+			inv := 255 - mask
+			dst.Pix[di+0] = div255(int(base.Pix[si+0])*mask + int(dst.Pix[di+0])*inv)
+			dst.Pix[di+1] = div255(int(base.Pix[si+1])*mask + int(dst.Pix[di+1])*inv)
+			dst.Pix[di+2] = div255(int(base.Pix[si+2])*mask + int(dst.Pix[di+2])*inv)
+			dst.Pix[di+3] = div255(int(base.Pix[si+3])*mask + int(dst.Pix[di+3])*inv)
+		}
+	}
+}
+
+func trimTransparentEdges(img *image.NRGBA, alphaThreshold uint8) (*image.NRGBA, image.Point) {
+	if img == nil {
+		return image.NewNRGBA(image.Rect(0, 0, 0, 0)), image.Point{}
+	}
+	b := img.Bounds()
+	if b.Empty() {
+		return image.NewNRGBA(image.Rect(0, 0, 0, 0)), image.Point{}
+	}
+
+	minX, minY := b.Max.X, b.Max.Y
+	maxX, maxY := b.Min.X, b.Min.Y
+	found := false
+	for y := b.Min.Y; y < b.Max.Y; y++ {
+		for x := b.Min.X; x < b.Max.X; x++ {
+			i := img.PixOffset(x, y)
+			if img.Pix[i+3] <= alphaThreshold {
+				img.Pix[i+0] = 0
+				img.Pix[i+1] = 0
+				img.Pix[i+2] = 0
+				img.Pix[i+3] = 0
+				continue
+			}
+			if x < minX {
+				minX = x
+			}
+			if y < minY {
+				minY = y
+			}
+			if x > maxX {
+				maxX = x
+			}
+			if y > maxY {
+				maxY = y
+			}
+			found = true
+		}
+	}
+	if !found {
+		return image.NewNRGBA(image.Rect(0, 0, 0, 0)), image.Point{}
+	}
+
+	cropRect := image.Rect(minX, minY, maxX+1, maxY+1)
+	return imaging.Crop(img, cropRect), cropRect.Min.Sub(b.Min)
+}

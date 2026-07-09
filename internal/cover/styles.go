@@ -405,7 +405,7 @@ func createStyleMulti1(libraryDir string, title [2]string, fontPaths [2]string, 
 			}
 			posterWithShadow := addShadow(poster, image.Pt(17, 14), color.NRGBA{0, 0, 0, 188}, 16)
 			yPosition := rowIndex * (cellHeight + margin)
-			draw.Draw(columnImage, image.Rect(0, yPosition, posterWithShadow.Bounds().Dx(), yPosition+posterWithShadow.Bounds().Dy()), posterWithShadow, image.Point{}, draw.Over)
+			pasteWithAlphaMask(columnImage, posterWithShadow, image.Pt(0, yPosition))
 		}
 
 		// 与 Python 参考一致：先把整列图居中放进更大的透明旋转画布再旋转，
@@ -417,19 +417,22 @@ func createStyleMulti1(libraryDir string, title [2]string, fontPaths [2]string, 
 		rotationCanvas := image.NewNRGBA(image.Rect(0, 0, rotationCanvasSize, rotationCanvasSize))
 		pasteX := (rotationCanvasSize - colW) / 2
 		pasteY := (rotationCanvasSize - colH) / 2
-		draw.Draw(rotationCanvas, image.Rect(pasteX, pasteY, pasteX+colW, pasteY+colH), columnImage, image.Point{}, draw.Over)
+		pasteWithAlphaMask(rotationCanvas, columnImage, image.Pt(pasteX, pasteY))
 		rotatedColumn := rotateBicubic(rotationCanvas, rotationAngle)
+		trimmedColumn, trimOffset := trimTransparentEdges(rotatedColumn, 3)
 		columnCenterY := startY + columnHeight/2
 		columnCenterX := columnX
 		if colIndex == 1 {
 			columnCenterX += cellWidth - 50
 		} else if colIndex == 2 {
 			columnCenterY += -155
-			columnCenterX += cellWidth*2 + 80
+			columnCenterX += cellWidth*2 - 40
 		}
 		finalX := columnCenterX - rotatedColumn.Bounds().Dx()/2
 		finalY := columnCenterY - rotatedColumn.Bounds().Dy()/2
-		draw.Draw(posterGroup, image.Rect(finalX, finalY, finalX+rotatedColumn.Bounds().Dx(), finalY+rotatedColumn.Bounds().Dy()), rotatedColumn, image.Point{}, draw.Over)
+		drawX := finalX + trimOffset.X
+		drawY := finalY + trimOffset.Y
+		pasteWithAlphaMask(posterGroup, trimmedColumn, image.Pt(drawX, drawY))
 	}
 
 	posterGroupShadow := createShadowLayer(posterGroup, image.Pt(26, 22), color.NRGBA{0, 0, 0, 76}, 28)
