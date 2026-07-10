@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"log"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -157,6 +158,7 @@ func (s *Server) maybeScheduleAutoCover(event *notifier.Event, cfg config.Config
 	client := emby.New(cfg.EmbyServerURL, cfg.EmbyAPIKey)
 	libraryID := s.resolveLibraryIDForSelectedLibraries(resolveCtx, client, event, cfg.SelectedLibraries)
 	if libraryID == "" {
+		log.Printf("新入库封面联动：无法确定媒体库 item_id=%s path=%q", event.ItemID, event.ItemPath)
 		return
 	}
 
@@ -183,10 +185,69 @@ func (s *Server) resolveLibraryIDForSelectedLibraries(ctx context.Context, clien
 		return ""
 	}
 
+	libraries, err := client.GetLibrariesWithPaths(ctx)
+	if err == nil {
+		if libraryID := resolveLibraryIDByPath(ctx, client, event, libraries, selectedSet); libraryID != "" {
+			return libraryID
+		}
+	}
+
 	candidates := webhookLibraryCandidates(event)
 	for _, candidate := range candidates {
 		if libraryID := walkLibraryChain(ctx, client, candidate, selectedSet); libraryID != "" {
 			return libraryID
+		}
+	}
+	return ""
+}
+
+func resolveLibraryIDByPath(ctx context.Context, client *emby.Client, event *notifier.Event, libraries []map[string]any, selectedSet map[string]struct{}) string {
+	itemPath := resolveWebhookItemPath(ctx, client, event)
+	if itemPath == "" {
+		return ""
+	}
+
+	bestID := ""
+	bestName := ""
+	bestSource := ""
+	bestLength := -1
+	for _, library := range libraries {
+		libraryID := strings.TrimSpace(itemID(library))
+		if _, ok := selectedSet[libraryID]; !ok {
+			continue
+		}
+		for _, sourcePath := range librarySourcePaths(library) {
+			if matchPathPrefix(itemPath, sourcePath) {
+				matchLength := len(normalizeComparablePath(sourcePath))
+				if matchLength > bestLength {
+					bestLength = matchLength
+					bestID = libraryID
+					bestName = strings.TrimSpace(asString(library["Name"]))
+					bestSource = sourcePath
+				}
+			}
+		}
+	}
+	if bestID != "" {
+		log.Printf("新入库封面联动：路径匹配媒体库 item_path=%q source=%q library=%s(%s)", itemPath, bestSource, bestName, bestID)
+	}
+	return bestID
+}
+
+func resolveWebhookItemPath(ctx context.Context, client *emby.Client, event *notifier.Event) string {
+	if event == nil {
+		return ""
+	}
+	if path := normalizeComparablePath(event.ItemPath); path != "" {
+		return path
+	}
+	for _, candidate := range webhookLibraryCandidates(event) {
+		item, _ := client.GetItem(ctx, candidate)
+		if len(item) == 0 {
+			continue
+		}
+		if path := normalizeComparablePath(asString(item["Path"])); path != "" {
+			return path
 		}
 	}
 	return ""
@@ -205,6 +266,71 @@ func walkLibraryChain(ctx context.Context, client *emby.Client, startID string, 
 		currentID = strings.TrimSpace(asString(item["ParentId"]))
 	}
 	return ""
+}
+
+func librarySourcePaths(library map[string]any) []string {
+	for _, key := range []string{"Locations", "Paths"} {
+		if values := stringSlice(library[key]); len(values) > 0 {
+			return normalizePathList(values)
+		}
+	}
+	if value := normalizeComparablePath(asString(library["Path"])); value != "" {
+		return []string{value}
+	}
+	return nil
+}
+
+func normalizePathList(values []string) []string {
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		if normalized := normalizeComparablePath(value); normalized != "" {
+			out = append(out, normalized)
+		}
+	}
+	return out
+}
+
+func normalizeComparablePath(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return ""
+	}
+	value = filepath.Clean(value)
+	value = strings.ReplaceAll(value, `\`, `/`)
+	value = strings.TrimRight(value, "/")
+	if value == "." {
+		return ""
+	}
+	return strings.ToLower(value)
+}
+
+func matchPathPrefix(itemPath, sourcePath string) bool {
+	itemPath = normalizeComparablePath(itemPath)
+	sourcePath = normalizeComparablePath(sourcePath)
+	if itemPath == "" || sourcePath == "" {
+		return false
+	}
+	if itemPath == sourcePath {
+		return true
+	}
+	return strings.HasPrefix(itemPath, sourcePath+"/")
+}
+
+func stringSlice(v any) []string {
+	switch t := v.(type) {
+	case []string:
+		return t
+	case []any:
+		out := make([]string, 0, len(t))
+		for _, item := range t {
+			if value := strings.TrimSpace(asString(item)); value != "" {
+				out = append(out, value)
+			}
+		}
+		return out
+	default:
+		return nil
+	}
 }
 
 func webhookLibraryCandidates(event *notifier.Event) []string {

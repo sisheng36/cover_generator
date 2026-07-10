@@ -125,6 +125,160 @@ func (c *Client) GetLibraries(ctx context.Context) ([]map[string]any, error) {
 	return resp.Items, nil
 }
 
+func (c *Client) GetLibrariesWithPaths(ctx context.Context) ([]map[string]any, error) {
+	libraries, err := c.GetLibraries(ctx)
+	if err != nil {
+		return []map[string]any{}, nil
+	}
+	virtualFolders, err := c.getVirtualFolders(ctx)
+	if err != nil || len(virtualFolders) == 0 {
+		return libraries, nil
+	}
+
+	byID := make(map[string]map[string]any, len(libraries))
+	byName := make(map[string][]map[string]any, len(libraries))
+	for _, library := range libraries {
+		id := strings.TrimSpace(asString(library["Id"]))
+		if id != "" {
+			byID[id] = library
+		}
+		name := strings.ToLower(strings.TrimSpace(asString(library["Name"])))
+		if name != "" {
+			byName[name] = append(byName[name], library)
+		}
+	}
+
+	for _, folder := range virtualFolders {
+		target := findLibraryForVirtualFolder(folder, byID, byName)
+		if target == nil {
+			continue
+		}
+		if locations := sourcePathsFromMap(folder); len(locations) > 0 {
+			target["Locations"] = locations
+		}
+		if strings.TrimSpace(asString(target["CollectionType"])) == "" {
+			target["CollectionType"] = asString(folder["CollectionType"])
+		}
+	}
+
+	return libraries, nil
+}
+
+func (c *Client) getVirtualFolders(ctx context.Context) ([]map[string]any, error) {
+	var raw any
+	queryErr := c.getJSON(ctx, "/Library/VirtualFolders/Query", nil, &raw)
+	if queryErr == nil {
+		return parseObjectList(raw), nil
+	}
+
+	raw = nil
+	foldersErr := c.getJSON(ctx, "/Library/VirtualFolders", nil, &raw)
+	if foldersErr == nil {
+		return parseObjectList(raw), nil
+	}
+	if queryErr != nil {
+		log.Printf("Emby GET /Library/VirtualFolders/Query 失败: %v", queryErr)
+	}
+	if foldersErr != nil {
+		log.Printf("Emby GET /Library/VirtualFolders 失败: %v", foldersErr)
+	}
+	return nil, nil
+}
+
+func findLibraryForVirtualFolder(folder map[string]any, byID map[string]map[string]any, byName map[string][]map[string]any) map[string]any {
+	for _, key := range []string{"ItemId", "LibraryId", "Id"} {
+		id := strings.TrimSpace(asString(folder[key]))
+		if id == "" {
+			continue
+		}
+		if library, ok := byID[id]; ok {
+			return library
+		}
+	}
+
+	name := strings.ToLower(strings.TrimSpace(asString(folder["Name"])))
+	if name == "" {
+		return nil
+	}
+	candidates := byName[name]
+	if len(candidates) == 1 {
+		return candidates[0]
+	}
+
+	folderType := strings.ToLower(strings.TrimSpace(asString(folder["CollectionType"])))
+	for _, candidate := range candidates {
+		candidateType := strings.ToLower(strings.TrimSpace(asString(candidate["CollectionType"])))
+		if candidateType != "" && candidateType == folderType {
+			return candidate
+		}
+	}
+	return nil
+}
+
+func parseObjectList(raw any) []map[string]any {
+	switch t := raw.(type) {
+	case []map[string]any:
+		return t
+	case []any:
+		out := make([]map[string]any, 0, len(t))
+		for _, item := range t {
+			if m, ok := item.(map[string]any); ok {
+				out = append(out, m)
+			}
+		}
+		return out
+	case map[string]any:
+		for _, key := range []string{"Items", "VirtualFolders"} {
+			if items, ok := t[key]; ok {
+				return parseObjectList(items)
+			}
+		}
+	}
+	return nil
+}
+
+func sourcePathsFromMap(data map[string]any) []string {
+	for _, key := range []string{"Locations", "Paths"} {
+		if values := stringList(data[key]); len(values) > 0 {
+			return values
+		}
+	}
+	if value := strings.TrimSpace(asString(data["Path"])); value != "" {
+		return []string{value}
+	}
+	if options, ok := data["LibraryOptions"].(map[string]any); ok {
+		for _, key := range []string{"Locations", "Paths"} {
+			if values := stringList(options[key]); len(values) > 0 {
+				return values
+			}
+		}
+	}
+	return nil
+}
+
+func stringList(v any) []string {
+	switch t := v.(type) {
+	case []string:
+		out := make([]string, 0, len(t))
+		for _, item := range t {
+			if value := strings.TrimSpace(item); value != "" {
+				out = append(out, value)
+			}
+		}
+		return out
+	case []any:
+		out := make([]string, 0, len(t))
+		for _, item := range t {
+			if value := strings.TrimSpace(asString(item)); value != "" {
+				out = append(out, value)
+			}
+		}
+		return out
+	default:
+		return nil
+	}
+}
+
 func (c *Client) GetLibraryItems(ctx context.Context, libraryID string, limit int, sortBy string, itemTypes string, startIndex int) ([]map[string]any, error) {
 	uid, err := c.GetUserID(ctx)
 	if err != nil {
@@ -169,6 +323,17 @@ func (c *Client) GetItem(ctx context.Context, itemID string) (map[string]any, er
 		return nil, nil
 	}
 	return item, nil
+}
+
+func asString(v any) string {
+	switch t := v.(type) {
+	case nil:
+		return ""
+	case string:
+		return t
+	default:
+		return fmt.Sprint(t)
+	}
 }
 
 func strMap(v any) map[string]any {
