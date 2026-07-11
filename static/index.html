@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>EmbyTool</title>
 <meta name="description" content="EmbyTool：为 Emby 媒体库生成美化封面，并通过 webhook 监听新媒体入库后发送 Telegram 通知。">
-<meta name="theme-color" content="#0f172a">
+<meta name="theme-color" content="#0f766e">
 <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png">
@@ -14,139 +14,267 @@
 <link rel="manifest" href="/static/site.webmanifest">
 <style>
 :root{
-  --bg:#edf2f7;
-  --card:#ffffff;
-  --text:#1f2937;
-  --muted:#6b7280;
-  --line:#dbe3ef;
-  --blue:#2563eb;
-  --blue-soft:#eff6ff;
-  --green:#059669;
-  --green-soft:#ecfdf5;
-  --red:#dc2626;
-  --red-soft:#fef2f2;
-  --orange:#ff7a1a;
-  --orange-soft:#fff2e8;
-  --shadow:0 16px 36px rgba(15,23,42,.08);
-  /* 磨砂玻璃半透明表面（白底） */
-  --glass-card:rgba(255,255,255,.55);
-  --glass-soft:rgba(255,255,255,.45);
-  --glass-strong:rgba(255,255,255,.7);
-  --glass-input:rgba(255,255,255,.5);
-  --glass-border:rgba(255,255,255,.6);
-  --glass-divider:rgba(15,23,42,.08);
-  /* Bing wallpaper fallback — overridden by JS at runtime */
-  --bing-wallpaper: linear-gradient(135deg, #f5e6d3 0%, #e8d5b7 50%, #d4c4a8 100%);
+  --bg:#f4f7f6;
+  --surface:#ffffff;
+  --surface-subtle:#eef4f2;
+  --text:#1c2926;
+  --muted:#62716d;
+  --line:#d7e1dd;
+  --blue:#08786f;
+  --blue-soft:#e1f2ed;
+  --green:#16835d;
+  --green-soft:#e8f6ee;
+  --red:#c83e43;
+  --red-soft:#fbeaec;
+  --orange:#b8532e;
+  --orange-soft:#faeee9;
+  --shadow:0 12px 28px rgba(28,41,38,.07);
+  --glass-card:var(--surface);
+  --glass-soft:var(--surface-subtle);
+  --glass-strong:var(--surface);
+  --glass-input:#fff;
+  --glass-border:var(--line);
+  --glass-divider:var(--line);
+  --bing-wallpaper:url("/images/1.jpg");
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{min-height:100%}
-body{font-family:"SF Pro Display","PingFang SC","Microsoft YaHei",sans-serif;color:var(--text);
-  background:
-    linear-gradient(180deg, rgba(248,251,255,.55), rgba(237,242,247,.55)),
-    var(--bing-wallpaper) center / cover no-repeat fixed;
-  background-attachment:fixed;
-}
-.container{max-width:1200px;margin:0 auto;padding:28px 16px 40px}
-h1{font-size:30px;font-weight:700;margin-bottom:8px}
-.page-subtitle{color:var(--muted);margin-bottom:24px;font-size:14px}
-.app-version{margin-left:10px;padding-left:10px;border-left:1px solid var(--glass-divider);color:var(--muted);font-size:13px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
-.top-tabs,.sub-tabs{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
-.tab-btn,.sub-tab-btn{border:1px solid var(--glass-border);border-radius:999px;padding:11px 18px;background:var(--glass-strong);color:var(--muted);cursor:pointer;box-shadow:var(--shadow);font-size:14px;font-weight:600;transition:.2s;-webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%)}
-.tab-btn.active,.sub-tab-btn.active{background:var(--text);color:#fff}
-#page-cover .sub-tab-btn.active{background:var(--orange);color:#fff;box-shadow:0 6px 18px rgba(255,122,26,.28)}
+body{font-family:"SF Pro Display","PingFang SC","Microsoft YaHei",sans-serif;color:var(--text);background:var(--bg);line-height:1.45}
+body::before{content:"";position:fixed;inset:0;z-index:0;pointer-events:none;background:var(--bing-wallpaper) center / cover no-repeat;opacity:.13}
+button,input,select,textarea{font:inherit}
+.container{position:relative;z-index:1;max-width:1240px;margin:0 auto;padding:28px 20px 48px}
+.app-header{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;padding:4px 0 24px}
+.brand-lockup{display:flex;align-items:center;gap:12px;min-width:0}
+.brand-mark{width:42px;height:42px;flex:0 0 42px;border-radius:8px}
+h1{font-size:28px;line-height:1.15;font-weight:760;letter-spacing:0}
+.page-subtitle{color:var(--muted);margin-top:5px;font-size:14px}
+.app-version{margin-left:8px;padding-left:8px;border-left:1px solid var(--line);color:var(--muted);font-size:12px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.app-context{display:flex;align-items:center;gap:8px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--muted);font-size:12px;white-space:nowrap}
+.app-context-dot{width:8px;height:8px;border-radius:50%;background:var(--green)}
+.top-tabs{display:flex;gap:2px;flex-wrap:wrap;margin-bottom:24px;padding:4px;border:1px solid var(--line);border-radius:8px;background:#e7eeeb}
+.sub-tabs{display:flex;gap:2px;flex-wrap:wrap;margin-bottom:18px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.tab-btn,.sub-tab-btn{border:0;border-radius:6px;padding:10px 15px;background:transparent;color:var(--muted);cursor:pointer;font-size:14px;font-weight:650;transition:background .16s,color .16s,box-shadow .16s}
+.tab-btn:hover,.sub-tab-btn:hover{background:rgba(255,255,255,.66);color:var(--text)}
+.tab-btn.active,.sub-tab-btn.active{background:var(--surface);color:var(--text);box-shadow:0 1px 2px rgba(28,41,38,.12)}
+#page-cover .sub-tab-btn.active{color:var(--orange);box-shadow:inset 0 -2px 0 var(--orange)}
 .page{display:none}
 .page.active{display:block}
-.card{background:var(--glass-card);border:1px solid var(--glass-border);border-radius:22px;padding:22px;box-shadow:var(--shadow);margin-bottom:18px;-webkit-backdrop-filter:blur(20px) saturate(170%);backdrop-filter:blur(20px) saturate(170%)}
-.card h2{font-size:18px;margin-bottom:14px}
-.card h3{font-size:15px;margin-bottom:12px}
-.card p.section-desc{font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.7}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:24px;box-shadow:var(--shadow);margin-bottom:18px}
+.card h2{font-size:18px;line-height:1.3;margin-bottom:10px}
+.card h3{font-size:15px;line-height:1.35;margin-bottom:10px}
+.card p.section-desc{font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.65}
 .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
 .form-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
-.form-group{display:flex;flex-direction:column;gap:6px}
+.form-group{display:flex;flex-direction:column;gap:6px;min-width:0}
 .form-group.full{grid-column:1/-1}
-.form-group label{font-size:14px;font-weight:600}
+.form-group label{font-size:13px;font-weight:700}
 .required::after{content:" *";color:var(--red)}
-.form-group input,.form-group select,.form-group textarea{width:100%;padding:11px 12px;border:1px solid var(--glass-border);border-radius:12px;font-size:14px;outline:none;background:var(--glass-input);transition:.2s;line-height:1.4;box-sizing:border-box;-webkit-backdrop-filter:blur(10px) saturate(160%);backdrop-filter:blur(10px) saturate(160%)}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:10px 11px;border:1px solid var(--line);border-radius:6px;font-size:14px;outline:none;background:var(--glass-input);transition:border-color .16s,box-shadow .16s;line-height:1.4}
 .form-group input,.form-group textarea{height:42px}
 .form-group input[type="number"],.form-group input[type="checkbox"]{height:auto}
 .form-group textarea{height:auto;min-height:100px;resize:vertical}
-.form-group select{height:42px;appearance:none;-webkit-appearance:none;-moz-appearance:none;background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3e%3cpath fill='none' stroke='%236b7280' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M3 4.5l3 3 3-3'/%3e%3c/svg%3e");background-repeat:no-repeat;background-position:right 12px center;background-size:12px 12px;padding-right:34px}
-.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.1)}
-.hint{font-size:12px;color:var(--muted);line-height:1.6}
-.empty-note{padding:14px 16px;border-radius:14px;background:var(--glass-soft);border:1px dashed var(--glass-border);font-size:13px;color:var(--muted);line-height:1.7;-webkit-backdrop-filter:blur(10px) saturate(160%);backdrop-filter:blur(10px) saturate(160%)}
+.form-group select{height:42px;appearance:none;-webkit-appearance:none;-moz-appearance:none;background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3e%3cpath fill='none' stroke='%2362716d' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' d='M3 4.5l3 3 3-3'/%3e%3c/svg%3e");background-repeat:no-repeat;background-position:right 12px center;background-size:12px 12px;padding-right:34px}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(8,120,111,.14)}
+.hint{font-size:12px;color:var(--muted);line-height:1.55}
+.empty-note{padding:14px 16px;border-radius:6px;background:var(--surface-subtle);border:1px dashed var(--line);font-size:13px;color:var(--muted);line-height:1.6}
 .toggle-row{display:flex;align-items:center;gap:10px;margin-bottom:14px}
 .toggle-row input,.checkbox-item input,.library-pick input{width:18px;height:18px;accent-color:var(--blue)}
-.actions{display:flex;gap:12px;flex-wrap:wrap}
-.btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid transparent;border-radius:12px;padding:11px 18px;font-size:14px;font-weight:600;cursor:pointer;transition:.2s;-webkit-backdrop-filter:blur(14px) saturate(170%);backdrop-filter:blur(14px) saturate(170%)}
-.btn-primary{background:var(--blue);color:#fff;border-color:rgba(255,255,255,.18)}
-.btn-primary:hover{background:#1d4ed8}
-.btn-secondary{background:var(--glass-strong);border:1px solid var(--glass-border);color:var(--text)}
-.btn-secondary:hover{background:rgba(255,255,255,.85)}
-.btn-success{background:var(--green);color:#fff;border-color:rgba(255,255,255,.18)}
-.btn-success:hover{background:#047857}
-.btn:disabled{opacity:.6;cursor:not-allowed}
+.actions{display:flex;gap:10px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;border:1px solid transparent;border-radius:6px;padding:10px 15px;font-size:14px;font-weight:700;cursor:pointer;transition:background .16s,border-color .16s,color .16s,transform .16s}
+.btn:active{transform:translateY(1px)}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-primary:hover{background:#05675f}
+.btn-secondary{background:var(--surface);border-color:var(--line);color:var(--text)}
+.btn-secondary:hover{background:var(--surface-subtle);border-color:#bdcec8}
+.btn-success{background:var(--green);color:#fff}
+.btn-success:hover{background:#0f6c4d}
+.btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
 .save-bar{display:flex;justify-content:center;margin-top:8px}
-.style-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
-.style-card{border:2px solid transparent;border-radius:18px;padding:12px;background:var(--glass-soft);cursor:pointer;transition:.2s;-webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%)}
-.style-card.active{border-color:var(--blue);background:var(--blue-soft)}
-.style-card img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:12px;display:block}
-.style-card .title{font-size:15px;font-weight:700;margin-top:10px}
-.style-card .desc{font-size:12px;color:var(--muted);margin-top:4px}
-.library-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-.library-pick{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border:1px solid var(--glass-border);border-radius:16px;background:var(--glass-soft);-webkit-backdrop-filter:blur(12px) saturate(160%);backdrop-filter:blur(12px) saturate(160%)}
-.library-pick .meta{flex:1}
-.library-pick .name{font-size:14px;font-weight:700}
-.summary-chip{display:inline-flex;align-items:center;padding:8px 12px;border-radius:999px;background:rgba(238,242,255,.7);color:#1d4ed8;font-size:12px;font-weight:600;margin:0 8px 8px 0;border:1px solid var(--glass-border);-webkit-backdrop-filter:blur(10px) saturate(160%);backdrop-filter:blur(10px) saturate(160%)}
-.title-editor-list{display:grid;gap:12px}
-.title-editor{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:12px;padding:14px;border:1px solid var(--glass-border);border-radius:16px;background:var(--glass-soft);-webkit-backdrop-filter:blur(12px) saturate(160%);backdrop-filter:blur(12px) saturate(160%)}
+.save-bar[hidden]{display:none}
+.style-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.style-card{border:1px solid var(--line);border-radius:8px;padding:10px;background:var(--surface);cursor:pointer;transition:border-color .16s,box-shadow .16s,transform .16s}
+.style-card:hover{border-color:#9db9b0;box-shadow:var(--shadow);transform:translateY(-1px)}
+.style-card.active{border-color:var(--blue);box-shadow:inset 0 0 0 1px var(--blue)}
+.style-card img{width:100%;aspect-ratio:16/9;object-fit:cover;border-radius:5px;display:block;background:var(--surface-subtle)}
+.style-card .title{font-size:14px;font-weight:750;margin-top:10px}
+.style-card .desc{font-size:12px;color:var(--muted);margin-top:3px}
+.library-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.library-pick{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+.library-pick:hover{border-color:#9db9b0;background:#fbfdfc}
+.library-pick .meta{flex:1;min-width:0}
+.library-pick .name{font-size:14px;font-weight:700;overflow-wrap:anywhere}
+.summary-chip{display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;background:var(--blue-soft);color:#05675f;font-size:12px;font-weight:700;margin:0 6px 6px 0;border:1px solid #c5e5db}
+.title-editor-list{display:grid;gap:10px}
+.title-editor{display:grid;grid-template-columns:1.1fr 1fr 1fr;gap:12px;padding:12px;border:1px solid var(--line);border-radius:6px;background:var(--surface-subtle)}
 .title-editor.disabled{opacity:.6}
-.title-editor .library-name{font-size:14px;font-weight:700;align-self:center}
+.title-editor .library-name{font-size:14px;font-weight:700;align-self:center;overflow-wrap:anywhere}
 .settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
-.status-bar{display:none;margin-top:14px;padding:12px 14px;border-radius:14px;font-size:13px;line-height:1.6;border:1px solid var(--glass-border);-webkit-backdrop-filter:blur(12px) saturate(160%);backdrop-filter:blur(12px) saturate(160%)}
-.status-bar.info{display:block;background:rgba(239,246,255,.75);color:#1d4ed8}
-.status-bar.success{display:block;background:rgba(236,253,245,.75);color:var(--green)}
-.status-bar.error{display:block;background:rgba(254,242,242,.75);color:var(--red)}
+.settings-section,.notify-section{padding:18px;border:1px solid var(--line);border-radius:6px;background:var(--surface-subtle)}
+.settings-section.full{grid-column:1/-1}
+.notify-section{margin-top:18px}
+.status-bar{display:none;margin-top:14px;padding:11px 12px;border-radius:6px;font-size:13px;line-height:1.55;border:1px solid var(--line)}
+.status-bar.info{display:block;background:#e8f1f5;color:#17617d;border-color:#bed9e4}
+.status-bar.success{display:block;background:var(--green-soft);color:#116343;border-color:#bee1cc}
+.status-bar.error{display:block;background:var(--red-soft);color:var(--red);border-color:#efc5c8}
 .result-list{margin-top:14px}
-.result-item{padding:10px 0;border-bottom:1px solid var(--glass-divider);font-size:13px}
+.result-item{padding:11px 0;border-bottom:1px solid var(--line);font-size:13px}
 .result-item:last-child{border-bottom:none}
 .result-item strong{margin-right:8px}
-.notify-list{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
-.checkbox-item{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--glass-border);border-radius:14px;background:var(--glass-soft);font-size:14px;-webkit-backdrop-filter:blur(12px) saturate(160%);backdrop-filter:blur(12px) saturate(160%)}
-.upload-area{border:2px dashed var(--glass-border);border-radius:18px;padding:34px 18px;text-align:center;cursor:pointer;background:var(--glass-soft);transition:.2s;-webkit-backdrop-filter:blur(12px) saturate(160%);backdrop-filter:blur(12px) saturate(160%)}
-.upload-area:hover{border-color:var(--blue);background:rgba(248,251,255,.75)}
-.upload-area.has-image{border-color:var(--green);background:rgba(240,253,244,.75)}
-.upload-area img{max-width:100%;max-height:300px;border-radius:14px;margin-top:12px}
+.notify-list{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+.checkbox-item{display:flex;align-items:center;gap:9px;padding:11px 12px;border:1px solid var(--line);border-radius:6px;background:var(--surface);font-size:14px}
+.upload-area{border:1px dashed #9db9b0;border-radius:8px;padding:34px 18px;text-align:center;cursor:pointer;background:var(--surface-subtle);transition:border-color .16s,background .16s}
+.upload-area:hover{border-color:var(--blue);background:var(--blue-soft)}
+.upload-area.has-image{border-color:var(--green);background:var(--green-soft)}
+.upload-area img{max-width:100%;max-height:300px;border-radius:6px;margin-top:12px}
 .preview-area{display:none;margin-top:16px;text-align:center}
-.preview-area img{max-width:100%;max-height:420px;border-radius:14px;box-shadow:0 16px 32px rgba(15,23,42,.18)}
-.inline-code{display:inline-block;padding:6px 10px;border-radius:10px;background:rgba(243,246,251,.7);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;word-break:break-all;border:1px solid var(--glass-border);-webkit-backdrop-filter:blur(10px) saturate(160%);backdrop-filter:blur(10px) saturate(160%)}
-.toast{position:fixed;top:24px;right:24px;z-index:1000;padding:12px 18px;border-radius:12px;color:#fff;font-size:14px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.2s;border:1px solid var(--glass-border);-webkit-backdrop-filter:blur(16px) saturate(180%);backdrop-filter:blur(16px) saturate(180%)}
+.preview-area img{max-width:100%;max-height:420px;border-radius:6px;box-shadow:var(--shadow)}
+.inline-code{display:inline-block;padding:7px 9px;border-radius:5px;background:var(--surface-subtle);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;word-break:break-all;border:1px solid var(--line)}
+.toast{position:fixed;top:20px;right:20px;z-index:1000;padding:11px 14px;border-radius:6px;color:#fff;font-size:14px;box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:opacity .16s}
 .toast.show{opacity:1}
 .toast.success{background:var(--green)}
 .toast.error{background:var(--red)}
-@media (max-width: 1200px){
+.overview-toolbar{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:2px 0 20px}
+.eyebrow{margin-bottom:5px;color:var(--blue);font-size:12px;font-weight:800}
+.overview-title{font-size:24px;line-height:1.2;font-weight:760}
+.overview-meta{margin-top:6px;color:var(--muted);font-size:13px}
+.overview-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.metric-card{min-height:126px;padding:17px;border:1px solid var(--line);border-radius:8px;background:var(--surface);box-shadow:var(--shadow)}
+.metric-label{display:block;color:var(--muted);font-size:13px;font-weight:700}
+.metric-value{display:block;margin-top:15px;font-size:32px;line-height:1;font-weight:780;letter-spacing:0;color:var(--text);overflow-wrap:anywhere}
+.metric-detail{display:block;min-height:18px;margin-top:8px;color:var(--muted);font-size:12px}
+.metric-card.is-highlight{border-color:#a7d7c9;background:#f9fdfb}
+.metric-card.is-highlight .metric-value{color:var(--blue)}
+.overview-chart-panel,.overview-recent-panel{border:1px solid var(--line);border-radius:8px;background:var(--surface);box-shadow:var(--shadow);margin-bottom:18px}
+.panel-heading{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:18px 20px;border-bottom:1px solid var(--line)}
+.panel-heading h3{font-size:15px}
+.panel-heading p{color:var(--muted);font-size:12px}
+.chart-scroll{overflow-x:auto;padding:20px 20px 12px}
+.import-chart{display:grid;grid-template-columns:repeat(30,minmax(18px,1fr));gap:6px;min-width:680px;height:246px}
+.import-column{display:grid;grid-template-rows:18px 1fr 18px;min-width:0}
+.import-value{align-self:start;justify-self:center;color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+.import-value.is-empty{color:transparent}
+.import-bar-track{display:flex;align-items:flex-end;height:198px;border-bottom:1px solid var(--line)}
+.import-bar{width:100%;min-height:2px;background:var(--blue);border-radius:3px 3px 0 0;transition:background .16s}
+.import-column:hover .import-bar{background:#005e57}
+.import-label{align-self:end;justify-self:center;color:var(--muted);font-size:10px;white-space:nowrap}
+.import-label.is-muted{color:transparent}
+.overview-chart-foot{display:flex;justify-content:space-between;gap:16px;padding:0 20px 17px;color:var(--muted);font-size:12px}
+.overview-empty{padding:20px;color:var(--muted);font-size:13px}
+.overview-day-list{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:0;padding:0 20px 8px}
+.overview-day-item{padding:14px 10px;border-right:1px solid var(--line)}
+.overview-day-item:first-child{padding-left:0}
+.overview-day-item:last-child{border-right:0}
+.overview-day-date{display:block;color:var(--muted);font-size:12px}
+.overview-day-count{display:block;margin-top:6px;font-size:19px;line-height:1;font-weight:760;font-variant-numeric:tabular-nums}
+@media (max-width:1200px){
   .library-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
   .notify-list{grid-template-columns:repeat(4,minmax(0,1fr))}
 }
-@media (max-width: 900px){
+@media (max-width:900px){
   .form-grid,.form-grid.three,.style-grid,.library-grid,.notify-list,.settings-grid,.title-editor{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .overview-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .overview-day-list{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .overview-day-item:nth-child(4){border-right:0}
+  .overview-day-item:nth-child(n+5){border-top:1px solid var(--line)}
 }
-@media (max-width: 560px){
+@media (max-width:560px){
+  .container{padding:20px 14px 32px}
+  .app-header{align-items:flex-start;padding-bottom:18px}
+  .app-context{display:none}
+  .top-tabs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+  .tab-btn{text-align:left}
   .form-grid,.form-grid.three,.style-grid,.library-grid,.notify-list,.settings-grid,.title-editor{grid-template-columns:1fr}
+  .card{padding:18px}
+  .overview-toolbar{align-items:flex-start;flex-direction:column}
+  .overview-toolbar .btn{width:100%}
+  .metric-card{min-height:112px;padding:14px}
+  .metric-value{font-size:28px}
+  .panel-heading{align-items:flex-start;flex-direction:column;padding:16px}
+  .chart-scroll{padding:16px 14px 10px}
+  .overview-chart-foot{padding:0 16px 14px}
+  .overview-day-list{grid-template-columns:repeat(2,minmax(0,1fr));padding:0 16px 8px}
+  .overview-day-item{padding:12px 8px;border-top:1px solid var(--line)}
+  .overview-day-item:nth-child(odd){padding-left:0}
+  .overview-day-item:nth-child(even){border-right:0}
+  .overview-day-item:first-child,.overview-day-item:nth-child(2){border-top:0}
+  .toast{top:12px;right:12px;left:12px}
 }
 </style>
 </head>
 <body>
 <div class="container">
-  <h1>EmbyTool</h1>
-  <p class="page-subtitle">Emby 媒体库封面生成与入库通知配置<span id="appVersion" class="app-version"></span></p>
+  <header class="app-header">
+    <div class="brand-lockup">
+      <img class="brand-mark" src="/static/favicon.svg" alt="">
+      <div>
+        <h1>EmbyTool</h1>
+        <p class="page-subtitle">媒体库封面与入库工作台<span id="appVersion" class="app-version"></span></p>
+      </div>
+    </div>
+    <div class="app-context"><span class="app-context-dot"></span>媒体库工作台</div>
+  </header>
 
-  <div class="top-tabs">
-    <button class="tab-btn active" data-page="basic" onclick="switchPage('basic')">基础设置</button>
-    <button class="tab-btn" data-page="cover" onclick="switchPage('cover')">媒体封面生成</button>
-    <button class="tab-btn" data-page="notify" onclick="switchPage('notify')">入库通知</button>
+  <div class="top-tabs" role="tablist" aria-label="EmbyTool 页面">
+    <button class="tab-btn active" data-page="overview" role="tab" aria-selected="true" onclick="switchPage('overview')">总览</button>
+    <button class="tab-btn" data-page="cover" role="tab" aria-selected="false" onclick="switchPage('cover')">媒体封面生成</button>
+    <button class="tab-btn" data-page="notify" role="tab" aria-selected="false" onclick="switchPage('notify')">入库通知</button>
+    <button class="tab-btn" data-page="basic" role="tab" aria-selected="false" onclick="switchPage('basic')">基础设置</button>
   </div>
 
-  <section id="page-basic" class="page active">
+  <section id="page-overview" class="page active">
+    <div class="overview-toolbar">
+      <div>
+        <p class="eyebrow">入库统计</p>
+        <h2 class="overview-title">近 30 天媒体入库</h2>
+        <p class="overview-meta" id="overviewPeriod">按 Webhook 接收时间统计</p>
+      </div>
+      <button id="overviewRefresh" class="btn btn-secondary" type="button" onclick="loadOverview()">刷新数据</button>
+    </div>
+
+    <div class="overview-metrics" aria-live="polite">
+      <article class="metric-card is-highlight">
+        <span class="metric-label">今日入库</span>
+        <strong class="metric-value" id="overviewTodayCount">0</strong>
+        <span class="metric-detail" id="overviewTodayDetail">当前自然日</span>
+      </article>
+      <article class="metric-card">
+        <span class="metric-label">近 7 天</span>
+        <strong class="metric-value" id="overviewWeekCount">0</strong>
+        <span class="metric-detail">含今天</span>
+      </article>
+      <article class="metric-card">
+        <span class="metric-label">近 30 天</span>
+        <strong class="metric-value" id="overviewMonthCount">0</strong>
+        <span class="metric-detail">累计入库媒体</span>
+      </article>
+      <article class="metric-card">
+        <span class="metric-label">单日峰值</span>
+        <strong class="metric-value" id="overviewPeakCount">0</strong>
+        <span class="metric-detail" id="overviewPeakDetail">暂无数据</span>
+      </article>
+    </div>
+
+    <section class="overview-chart-panel" aria-labelledby="overviewChartTitle">
+      <div class="panel-heading">
+        <h3 id="overviewChartTitle">每日入库数量</h3>
+        <p id="overviewChartSummary">近 30 天</p>
+      </div>
+      <div class="chart-scroll">
+        <div id="overviewChart" class="import-chart" role="img" aria-label="近 30 天每日入库数量柱状图"></div>
+      </div>
+      <div id="overviewChartFoot" class="overview-chart-foot"></div>
+    </section>
+
+    <section class="overview-recent-panel" aria-labelledby="overviewRecentTitle">
+      <div class="panel-heading">
+        <h3 id="overviewRecentTitle">最近 7 天</h3>
+        <p>每日媒体入库</p>
+      </div>
+      <div id="overviewRecentList" class="overview-day-list"></div>
+    </section>
+  </section>
+
+  <section id="page-basic" class="page">
     <div class="card">
       <h2>基础设置</h2>
       <p class="section-desc">配置 Emby 连接、媒体库、TMDB 和封面目录。</p>
@@ -241,7 +369,7 @@ h1{font-size:30px;font-weight:700;margin-bottom:8px}
     <div id="cover-tab-settings" class="card cover-tab" style="display:none">
       <h2>风格设置</h2>
       <div class="settings-grid">
-        <div class="card" style="margin:0;padding:18px;grid-column:1/-1">
+        <div class="settings-section full">
           <h3>媒体排序方式</h3>
           <div class="form-grid">
             <div class="form-group">
@@ -256,7 +384,7 @@ h1{font-size:30px;font-weight:700;margin-bottom:8px}
           </div>
         </div>
 
-        <div class="card" style="margin:0;padding:18px;grid-column:1/-1">
+        <div class="settings-section full">
           <h3>字体设置</h3>
           <div class="form-grid">
             <div class="form-group">
@@ -272,7 +400,7 @@ h1{font-size:30px;font-weight:700;margin-bottom:8px}
           </div>
         </div>
 
-        <div class="card" style="margin:0;padding:18px">
+        <div class="settings-section">
           <h3>单图风格</h3>
           <div class="form-grid">
             <div class="form-group">
@@ -332,7 +460,7 @@ h1{font-size:30px;font-weight:700;margin-bottom:8px}
           </div>
         </div>
 
-        <div class="card" style="margin:0;padding:18px">
+        <div class="settings-section">
           <h3>多图风格</h3>
           <div class="form-grid">
             <div class="form-group">
@@ -427,7 +555,7 @@ h1{font-size:30px;font-weight:700;margin-bottom:8px}
           <div class="hint">支持个人、群组和频道 Chat ID。</div>
         </div>
       </div>
-      <div class="card" style="margin:18px 0 0;padding:18px">
+      <div class="notify-section">
         <h3>通知事件</h3>
         <div id="notifyTypeList" class="notify-list"></div>
       </div>
@@ -459,7 +587,7 @@ h1{font-size:30px;font-weight:700;margin-bottom:8px}
           <div class="hint">开启后，选中的媒体库有新剧集或电影入库时会自动联动更新封面。</div>
         </div>
       </div>
-      <div class="card" style="margin:18px 0 0;padding:18px">
+      <div class="notify-section">
         <h3>当前待触发窗口</h3>
         <div id="autoCoverStatusSummary" class="status-bar"></div>
         <div id="autoCoverStatusList" class="result-list"></div>
@@ -473,7 +601,7 @@ h1{font-size:30px;font-weight:700;margin-bottom:8px}
     </div>
   </section>
 
-  <div class="save-bar">
+  <div id="saveBar" class="save-bar" hidden>
     <button class="btn btn-primary" onclick="saveConfig()" style="min-width:220px">保存全部配置</button>
   </div>
 </div>
@@ -487,6 +615,7 @@ const state = {
   selectedFile: null,
   currentResultBase64: null,
   autoCoverStatusLoading: false,
+  overviewLoading: false,
 };
 
 let autoCoverStatusTimer = null;
@@ -507,17 +636,128 @@ const styleOptions = [
 ];
 
 function switchPage(page){
-  document.querySelectorAll('.tab-btn').forEach(btn=>btn.classList.toggle('active', btn.dataset.page===page));
+  document.querySelectorAll('.tab-btn').forEach(btn=>{
+    const active = btn.dataset.page === page;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', String(active));
+  });
   document.querySelectorAll('.page').forEach(el=>el.classList.toggle('active', el.id===`page-${page}`));
+  document.getElementById('saveBar').hidden = page === 'overview';
   syncAutoCoverStatusPolling();
   if(page === 'notify'){
     loadAutoCoverStatus();
+  }
+  if(page === 'overview'){
+    loadOverview(true);
   }
 }
 
 function switchCoverTab(tab){
   document.querySelectorAll('.sub-tab-btn').forEach(btn=>btn.classList.toggle('active', btn.dataset.coverTab===tab));
   document.querySelectorAll('.cover-tab').forEach(el=>{el.style.display = el.id===`cover-tab-${tab}` ? 'block' : 'none';});
+}
+
+function overviewCount(value){
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : 0;
+}
+
+function formatOverviewDate(value){
+  const parts = String(value || '').split('-');
+  if(parts.length !== 3)return String(value || '');
+  return `${Number(parts[1])}/${Number(parts[2])}`;
+}
+
+function setOverviewText(id, value){
+  const el = document.getElementById(id);
+  if(el)el.textContent = value;
+}
+
+function renderOverview(data){
+  const days = Array.isArray(data?.days) ? data.days.slice(-30).map(day=>({
+    date: String(day?.date || ''),
+    count: overviewCount(day?.count),
+  })).filter(day=>day.date) : [];
+  const todayCount = overviewCount(data?.today_count);
+  const weekCount = overviewCount(data?.last_7_days_count);
+  const monthCount = overviewCount(data?.last_30_days_count);
+  const peakCount = overviewCount(data?.peak_count);
+  const peakDate = String(data?.peak_date || '');
+
+  setOverviewText('overviewTodayCount', String(todayCount));
+  setOverviewText('overviewWeekCount', String(weekCount));
+  setOverviewText('overviewMonthCount', String(monthCount));
+  setOverviewText('overviewPeakCount', String(peakCount));
+  setOverviewText('overviewPeakDetail', peakCount > 0 && peakDate ? `${formatOverviewDate(peakDate)} 达到峰值` : '暂无数据');
+  setOverviewText('overviewChartSummary', `30 天累计 ${monthCount} 个媒体`);
+
+  const chart = document.getElementById('overviewChart');
+  const chartFoot = document.getElementById('overviewChartFoot');
+  const recentList = document.getElementById('overviewRecentList');
+  if(!days.length){
+    chart.className = 'overview-empty';
+    chart.textContent = '还没有收到可统计的新入库事件。';
+    chartFoot.textContent = '';
+    recentList.innerHTML = '';
+    return;
+  }
+
+  const maxCount = Math.max(1, ...days.map(day=>day.count));
+  chart.className = 'import-chart';
+  chart.setAttribute('aria-label', `近 30 天每日入库数量柱状图，累计 ${monthCount} 个媒体`);
+  chart.innerHTML = days.map((day, index)=>{
+    const height = day.count > 0 ? Math.max(4, Math.round(day.count / maxCount * 100)) : 0;
+    const showLabel = index === 0 || index === days.length-1 || index % 5 === 4;
+    const date = formatOverviewDate(day.date);
+    return `
+      <div class="import-column" title="${escapeHtmlAttr(`${day.date}: ${day.count} 个媒体`)}">
+        <span class="import-value ${day.count === 0 ? 'is-empty' : ''}">${day.count}</span>
+        <div class="import-bar-track"><div class="import-bar" style="height:${height}%"></div></div>
+        <span class="import-label ${showLabel ? '' : 'is-muted'}">${escapeHtml(date)}</span>
+      </div>
+    `;
+  }).join('');
+  chartFoot.innerHTML = `
+    <span>${escapeHtml(formatOverviewDate(days[0].date))} 至 ${escapeHtml(formatOverviewDate(days[days.length-1].date))}</span>
+    <span>${peakCount > 0 && peakDate ? `峰值 ${escapeHtml(formatOverviewDate(peakDate))} · ${peakCount}` : '暂无峰值数据'}</span>
+  `;
+  recentList.innerHTML = days.slice(-7).reverse().map(day=>`
+    <div class="overview-day-item">
+      <span class="overview-day-date">${escapeHtml(formatOverviewDate(day.date))}</span>
+      <strong class="overview-day-count">${day.count}</strong>
+    </div>
+  `).join('');
+}
+
+function renderOverviewError(message){
+  ['overviewTodayCount','overviewWeekCount','overviewMonthCount','overviewPeakCount'].forEach(id=>setOverviewText(id, '—'));
+  setOverviewText('overviewPeakDetail', '暂时无法读取');
+  setOverviewText('overviewChartSummary', '统计读取失败');
+  const chart = document.getElementById('overviewChart');
+  const chartFoot = document.getElementById('overviewChartFoot');
+  const recentList = document.getElementById('overviewRecentList');
+  chart.className = 'overview-empty';
+  chart.textContent = `读取统计失败：${message}`;
+  chartFoot.textContent = '';
+  recentList.innerHTML = '';
+}
+
+async function loadOverview(silent=false){
+  if(state.overviewLoading)return;
+  state.overviewLoading = true;
+  const refreshButton = document.getElementById('overviewRefresh');
+  if(refreshButton)refreshButton.disabled = true;
+  try{
+    const response = await fetch('/api/overview');
+    if(!response.ok)throw new Error('统计接口不可用');
+    renderOverview(await response.json());
+  }catch(error){
+    renderOverviewError(error.message);
+    if(!silent)showToast(`读取入库统计失败: ${error.message}`, 'error');
+  }finally{
+    state.overviewLoading = false;
+    if(refreshButton)refreshButton.disabled = false;
+  }
 }
 
 function showToast(message, type){
@@ -968,7 +1208,7 @@ function syncAutoCoverStatusPolling(){
 // ========== Bing 每日壁纸 ==========
 // 参考实现：浏览器通过 CORS 代理拉取 https://www.bing.com/HPImageArchive.aspx，
 // 用 Image() 预校验可访问性后写入 CSS 变量 --bing-wallpaper。
-// 默认开启；获取失败时回落到 :root 默认渐变背景。
+// 默认开启；获取失败时保留 :root 的本地图片回退。
 const BING_WALLPAPER = {
   cacheKey: 'bing-wallpaper-cache',
   api: 'https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=zh-CN',
@@ -1043,7 +1283,7 @@ async function initBingWallpaper(){
     const ok = await bingProbeImage(cached.url);
     if(ok){ bingApplyWallpaper(`url("${cached.url}")`); return; }
   }
-  // 2. 否则拉取新的；失败保留 :root 渐变
+  // 2. 否则拉取新的；失败保留 :root 本地图片
   const fresh = await bingFetchToday();
   if(fresh){
     bingApplyWallpaper(`url("${fresh.url}")`);
@@ -1075,6 +1315,7 @@ async function initialize(){
   renderStyleCards();
   renderLibrarySelector();
   renderTitleEditors();
+  await loadOverview(true);
   try{
     await loadConfig(true);
   }catch(error){

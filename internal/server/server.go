@@ -41,6 +41,7 @@ type Server struct {
 	notifierSvc *notifier.Service
 	scheduler   *scheduler.Manager
 	autoCover   *autoCoverScheduler
+	importStats *importStatsStore
 	httpServer  *http.Server
 	addr        string
 	staticDir   string
@@ -72,6 +73,10 @@ type autoCoverStatusResponse struct {
 func New(addr string) *Server {
 	cfg := config.Load()
 	fontCache := fonts.NewCache()
+	importStats, err := newImportStatsStore(importStatsFile)
+	if err != nil {
+		log.Printf("加载入库统计失败，将从新的统计记录开始: %v", err)
+	}
 	return &Server{
 		cfg:         cfg,
 		fontCache:   fontCache,
@@ -79,6 +84,7 @@ func New(addr string) *Server {
 		notifierSvc: notifier.NewService(),
 		scheduler:   scheduler.New(),
 		autoCover:   newAutoCoverScheduler(),
+		importStats: importStats,
 		addr:        normalizeAddr(addr),
 		staticDir:   resolveAssetDir("static"),
 		imagesDir:   resolveAssetDir("images"),
@@ -119,6 +125,7 @@ func (s *Server) Run(ctx context.Context) error {
 	mux.HandleFunc("/api/health", s.handleHealth)
 	mux.HandleFunc("/api/mem", s.handleMem)
 	mux.HandleFunc("/api/auto_cover/status", s.handleAutoCoverStatus)
+	mux.HandleFunc("/api/overview", s.handleOverview)
 	mux.HandleFunc("/webhook/emby", s.handleWebhook)
 
 	srv := &http.Server{
@@ -281,6 +288,21 @@ func (s *Server) handleVersion(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"version": version.Get()})
+}
+
+func (s *Server) handleOverview(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w, http.MethodGet)
+		return
+	}
+	if s.importStats == nil {
+		writeJSON(w, http.StatusOK, (&importStatsStore{
+			days: map[string]int{},
+			seen: map[string]string{},
+		}).Overview())
+		return
+	}
+	writeJSON(w, http.StatusOK, s.importStats.Overview())
 }
 
 func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
@@ -674,6 +696,11 @@ func (s *Server) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 	cfg := s.currentConfig()
 	if event := notifier.ParseWebhook(data); event != nil {
+		if s.importStats != nil {
+			if _, err := s.importStats.Record(event); err != nil {
+				log.Printf("记录入库统计失败: %v", err)
+			}
+		}
 		s.maybeScheduleAutoCover(event, cfg)
 	}
 	result := s.notifierSvc.HandleWebhook(r.Context(), data, cfg)
