@@ -58,7 +58,7 @@ button,input,select,textarea{font:inherit}
 .app-header{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;padding:4px 0 24px}
 .brand-lockup{display:flex;align-items:center;gap:12px;min-width:0}
 .brand-mark{width:42px;height:42px;flex:0 0 42px;border-radius:14px;box-shadow:var(--shadow-soft)}
-h1,h2,h3,.overview-title,.style-card .title,.metric-value,.overview-day-count{font-family:var(--font-display)}
+h1,h2,h3,.overview-title,.style-card .title,.metric-value{font-family:var(--font-display)}
 h1{font-size:28px;line-height:1.15;font-weight:800;letter-spacing:0}
 h2{font-weight:700}
 h3{font-weight:600}
@@ -198,12 +198,13 @@ h3{font-weight:600}
 .import-label.is-muted{color:transparent}
 .overview-chart-foot{display:flex;justify-content:space-between;gap:16px;padding:0 20px 17px;color:var(--muted);font-size:12px}
 .overview-empty{padding:20px;color:var(--muted);font-size:13px}
-.overview-day-list{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:0;padding:0 20px 8px}
-.overview-day-item{padding:14px 10px;border-right:1px solid var(--glass-divider)}
-.overview-day-item:first-child{padding-left:0}
-.overview-day-item:last-child{border-right:0}
-.overview-day-date{display:block;color:var(--muted);font-size:12px}
-.overview-day-count{display:block;margin-top:6px;font-size:19px;line-height:1;font-weight:700;font-variant-numeric:tabular-nums}
+.overview-poster-wall{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:8px;padding:12px}
+.overview-poster{position:relative;display:block;min-width:0;aspect-ratio:2/3;overflow:hidden;border:1px solid rgba(255,255,255,.58);border-radius:6px;background:var(--surface-subtle);box-shadow:0 1px 0 rgba(255,255,255,.62) inset;isolation:isolate}
+.overview-poster img{width:100%;height:100%;display:block;object-fit:cover;transition:transform .24s ease}
+.overview-poster:hover img{transform:scale(1.035)}
+.overview-poster-fallback{display:none;position:absolute;inset:0;align-items:center;justify-content:center;padding:10px;color:var(--muted);font-size:12px;line-height:1.45;text-align:center;overflow-wrap:anywhere}
+.overview-poster.is-unavailable .overview-poster-fallback{display:flex}
+.overview-poster-empty{grid-column:1/-1;padding:12px 8px;color:var(--muted);font-size:13px}
 #page-overview.overview-animate .metric-card{animation:overview-panel-enter .42s cubic-bezier(.2,.75,.25,1) both}
 #page-overview.overview-animate .metric-card:nth-child(2){animation-delay:.05s}
 #page-overview.overview-animate .metric-card:nth-child(3){animation-delay:.1s}
@@ -217,9 +218,7 @@ h3{font-weight:600}
 @media (max-width:900px){
   .form-grid,.form-grid.three,.style-grid,.library-grid,.notify-list,.settings-grid,.title-editor{grid-template-columns:repeat(2,minmax(0,1fr))}
   .overview-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .overview-day-list{grid-template-columns:repeat(4,minmax(0,1fr))}
-  .overview-day-item:nth-child(4){border-right:0}
-  .overview-day-item:nth-child(n+5){border-top:1px solid var(--line)}
+  .overview-poster-wall{grid-template-columns:repeat(6,minmax(0,1fr))}
 }
 @media (max-width:560px){
   .container{padding:20px 14px 32px}
@@ -238,11 +237,7 @@ h3{font-weight:600}
   .overview-range-btn{flex:1}
   .chart-scroll{padding:16px 14px 10px}
   .overview-chart-foot{padding:0 16px 14px}
-  .overview-day-list{grid-template-columns:repeat(2,minmax(0,1fr));padding:0 16px 8px}
-  .overview-day-item{padding:12px 8px;border-top:1px solid var(--line)}
-  .overview-day-item:nth-child(odd){padding-left:0}
-  .overview-day-item:nth-child(even){border-right:0}
-  .overview-day-item:first-child,.overview-day-item:nth-child(2){border-top:0}
+  .overview-poster-wall{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:10px}
   .toast{top:12px;right:12px;left:12px}
 }
 @media (prefers-reduced-motion:reduce){
@@ -325,10 +320,10 @@ h3{font-weight:600}
 
     <section class="overview-recent-panel" aria-labelledby="overviewRecentTitle">
       <div class="panel-heading">
-        <h3 id="overviewRecentTitle">最近 7 天</h3>
-        <p>每日媒体入库</p>
+        <h3 id="overviewRecentTitle">最近入库</h3>
+        <p>最新 32 个媒体</p>
       </div>
-      <div id="overviewRecentList" class="overview-day-list"></div>
+      <div id="overviewRecentWall" class="overview-poster-wall" role="list" aria-live="polite"></div>
     </section>
   </section>
 
@@ -833,6 +828,34 @@ function setOverviewRange(days){
   animateOverview();
 }
 
+function renderRecentImportWall(items){
+  const wall = document.getElementById('overviewRecentWall');
+  if(!wall)return;
+  const recentItems = Array.isArray(items) ? items.slice(0, 32).map(item=>({
+    id: String(item?.id || ''),
+    name: String(item?.name || ''),
+    type: String(item?.type || ''),
+  })).filter(item=>item.id) : [];
+
+  if(!recentItems.length){
+    wall.innerHTML = '<div class="overview-poster-empty">暂无最近入库海报</div>';
+    return;
+  }
+
+  wall.innerHTML = recentItems.map(item=>{
+    const name = item.name || '未命名媒体';
+    const mediaType = item.type === 'TV' ? '剧集' : '电影';
+    const label = `${name}（${mediaType}）`;
+    const posterURL = `/api/recent-imports/poster?id=${encodeURIComponent(item.id)}`;
+    return `
+      <article class="overview-poster" role="listitem" title="${escapeHtmlAttr(label)}" aria-label="${escapeHtmlAttr(label)}">
+        <img src="${escapeHtmlAttr(posterURL)}" alt="${escapeHtmlAttr(name)}" loading="lazy" decoding="async" onerror="this.parentElement.classList.add('is-unavailable');this.remove()">
+        <span class="overview-poster-fallback">${escapeHtml(name)}</span>
+      </article>
+    `;
+  }).join('');
+}
+
 function renderOverview(data){
   const allDays = Array.isArray(data?.days) ? data.days.slice(-30).map(day=>({
     date: String(day?.date || ''),
@@ -857,14 +880,13 @@ function renderOverview(data){
 
   const chart = document.getElementById('overviewChart');
   const chartFoot = document.getElementById('overviewChartFoot');
-  const recentList = document.getElementById('overviewRecentList');
+  renderRecentImportWall(data?.recent_items);
   if(!days.length){
     chart.className = 'overview-empty';
     chart.style.removeProperty('--chart-columns');
     chart.style.removeProperty('--chart-min-width');
     chart.textContent = '还没有收到可统计的新入库事件。';
     chartFoot.textContent = '';
-    recentList.innerHTML = '';
     return;
   }
 
@@ -889,12 +911,6 @@ function renderOverview(data){
     <span>${escapeHtml(formatOverviewDate(days[0].date))} 至 ${escapeHtml(formatOverviewDate(days[days.length-1].date))}</span>
     <span>${rangePeak.count > 0 && rangePeak.date ? `峰值 ${escapeHtml(formatOverviewDate(rangePeak.date))} · ${rangePeak.count}` : '暂无峰值数据'}</span>
   `;
-  recentList.innerHTML = allDays.slice(-7).reverse().map(day=>`
-    <div class="overview-day-item">
-      <span class="overview-day-date">${escapeHtml(formatOverviewDate(day.date))}</span>
-      <strong class="overview-day-count">${day.count}</strong>
-    </div>
-  `).join('');
 }
 
 function renderOverviewError(message){
@@ -903,11 +919,11 @@ function renderOverviewError(message){
   setOverviewText('overviewChartSummary', '统计读取失败');
   const chart = document.getElementById('overviewChart');
   const chartFoot = document.getElementById('overviewChartFoot');
-  const recentList = document.getElementById('overviewRecentList');
+  const wall = document.getElementById('overviewRecentWall');
   chart.className = 'overview-empty';
   chart.textContent = `读取统计失败：${message}`;
   chartFoot.textContent = '';
-  recentList.innerHTML = '';
+  if(wall)wall.innerHTML = '<div class="overview-poster-empty">暂时无法读取最近入库海报</div>';
 }
 
 async function loadOverview(silent=false){

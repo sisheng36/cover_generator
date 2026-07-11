@@ -409,6 +409,21 @@ func (c *Client) GetImageURL(item map[string]any, usePrimary bool) string {
 	return firstNonEmpty(parentBackdropURL, backdropURL, primaryURL)
 }
 
+func (c *Client) GetImage(ctx context.Context, apiPath string) (*http.Response, error) {
+	if strings.TrimSpace(apiPath) == "" {
+		return nil, fmt.Errorf("empty image path")
+	}
+	resp, err := c.do(ctx, http.MethodGet, apiPath, nil, nil, "")
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		resp.Body.Close()
+		return nil, fmt.Errorf("download %s -> %s", apiPath, resp.Status)
+	}
+	return resp, nil
+}
+
 func firstNonEmpty(values ...string) string {
 	for _, v := range values {
 		if strings.TrimSpace(v) != "" {

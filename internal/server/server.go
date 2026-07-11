@@ -126,6 +126,7 @@ func (s *Server) Run(ctx context.Context) error {
 	mux.HandleFunc("/api/mem", s.handleMem)
 	mux.HandleFunc("/api/auto_cover/status", s.handleAutoCoverStatus)
 	mux.HandleFunc("/api/overview", s.handleOverview)
+	mux.HandleFunc("/api/recent-imports/poster", s.handleRecentImportPoster)
 	mux.HandleFunc("/webhook/emby", s.handleWebhook)
 
 	srv := &http.Server{
@@ -303,6 +304,77 @@ func (s *Server) handleOverview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, s.importStats.Overview())
+}
+
+func (s *Server) handleRecentImportPoster(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		methodNotAllowed(w, http.MethodGet, http.MethodHead)
+		return
+	}
+	if s.importStats == nil {
+		http.NotFound(w, r)
+		return
+	}
+
+	item, ok := s.importStats.recentImport(r.URL.Query().Get("id"))
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+
+	cfg := s.currentConfig()
+	if cfg.EmbyServerURL == "" || cfg.EmbyAPIKey == "" {
+		http.Error(w, "Emby 未配置", http.StatusServiceUnavailable)
+		return
+	}
+
+	client := emby.New(cfg.EmbyServerURL, cfg.EmbyAPIKey)
+	imagePath := recentImportPosterPath(r.Context(), client, item)
+	if imagePath == "" {
+		http.NotFound(w, r)
+		return
+	}
+
+	response, err := client.GetImage(r.Context(), imagePath)
+	if err != nil {
+		log.Printf("读取最近入库海报失败: %v", err)
+		http.Error(w, "读取海报失败", http.StatusBadGateway)
+		return
+	}
+	defer response.Body.Close()
+
+	if contentType := response.Header.Get("Content-Type"); contentType != "" {
+		w.Header().Set("Content-Type", contentType)
+	}
+	if response.ContentLength >= 0 {
+		w.Header().Set("Content-Length", strconv.FormatInt(response.ContentLength, 10))
+	}
+	w.Header().Set("Cache-Control", "private, max-age=300")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(http.StatusOK)
+	if r.Method == http.MethodHead {
+		return
+	}
+	if _, err := io.Copy(w, response.Body); err != nil {
+		log.Printf("发送最近入库海报失败: %v", err)
+	}
+}
+
+func recentImportPosterPath(ctx context.Context, client *emby.Client, entry recentImport) string {
+	itemIDs := []string{entry.ItemID}
+	if entry.FallbackItemID != "" && entry.FallbackItemID != entry.ItemID {
+		itemIDs = append(itemIDs, entry.FallbackItemID)
+	}
+	for _, itemID := range itemIDs {
+		item, err := client.GetItem(ctx, itemID)
+		if err != nil || len(item) == 0 {
+			continue
+		}
+		if imagePath := client.GetImageURL(item, true); imagePath != "" {
+			return imagePath + "&maxWidth=320&maxHeight=480&quality=90"
+		}
+	}
+	return ""
 }
 
 func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {
