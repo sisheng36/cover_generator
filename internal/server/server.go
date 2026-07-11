@@ -181,7 +181,7 @@ func (s *Server) updateConfig(cfg config.Config) {
 
 func (s *Server) newEmbyClient() *emby.Client {
 	cfg := s.currentConfig()
-	return emby.New(cfg.EmbyServerURL, cfg.EmbyAPIKey)
+	return emby.NewWithUserID(cfg.EmbyServerURL, cfg.EmbyAPIKey, cfg.EmbyUserID)
 }
 
 func (s *Server) scheduledGenerate() {
@@ -192,7 +192,7 @@ func (s *Server) scheduledGenerate() {
 	}()
 
 	cfg := config.Load()
-	client := emby.New(cfg.EmbyServerURL, cfg.EmbyAPIKey)
+	client := emby.NewWithUserID(cfg.EmbyServerURL, cfg.EmbyAPIKey, cfg.EmbyUserID)
 	libraries, err := client.GetLibraries(context.Background())
 	if err != nil {
 		log.Printf("定时任务：获取媒体库失败: %v", err)
@@ -328,7 +328,7 @@ func (s *Server) handleRecentImportPoster(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	client := emby.New(cfg.EmbyServerURL, cfg.EmbyAPIKey)
+	client := emby.NewWithUserID(cfg.EmbyServerURL, cfg.EmbyAPIKey, cfg.EmbyUserID)
 	imagePath := recentImportPosterPath(r.Context(), client, item)
 	if imagePath == "" {
 		http.NotFound(w, r)
@@ -418,7 +418,7 @@ func (s *Server) handleLibraries(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	cfg := s.currentConfig()
-	client := emby.New(cfg.EmbyServerURL, cfg.EmbyAPIKey)
+	client := emby.NewWithUserID(cfg.EmbyServerURL, cfg.EmbyAPIKey, cfg.EmbyUserID)
 	libraries, err := client.GetLibraries(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]any{
@@ -460,7 +460,7 @@ func (s *Server) handleLibrariesGenerate(w http.ResponseWriter, r *http.Request)
 	}
 
 	cfg := s.currentConfig()
-	client := emby.New(cfg.EmbyServerURL, cfg.EmbyAPIKey)
+	client := emby.NewWithUserID(cfg.EmbyServerURL, cfg.EmbyAPIKey, cfg.EmbyUserID)
 	libraries, err := client.GetLibraries(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]any{
@@ -500,7 +500,7 @@ func (s *Server) handleLibrariesGenerateAll(w http.ResponseWriter, r *http.Reque
 	}
 
 	cfg := s.currentConfig()
-	client := emby.New(cfg.EmbyServerURL, cfg.EmbyAPIKey)
+	client := emby.NewWithUserID(cfg.EmbyServerURL, cfg.EmbyAPIKey, cfg.EmbyUserID)
 	libraries, err := client.GetLibraries(r.Context())
 	if err != nil {
 		writeJSON(w, http.StatusBadGateway, map[string]any{
@@ -709,7 +709,7 @@ func (s *Server) handleAutoCoverStatus(w http.ResponseWriter, r *http.Request) {
 
 	nameByID := map[string]string{}
 	if cfg.EmbyServerURL != "" && cfg.EmbyAPIKey != "" {
-		client := emby.New(cfg.EmbyServerURL, cfg.EmbyAPIKey)
+		client := emby.NewWithUserID(cfg.EmbyServerURL, cfg.EmbyAPIKey, cfg.EmbyUserID)
 		if libraries, err := client.GetLibraries(r.Context()); err == nil {
 			for _, library := range libraries {
 				nameByID[itemID(library)] = asString(library["Name"])

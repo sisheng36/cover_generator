@@ -342,6 +342,11 @@ h3{font-weight:600}
           <input id="emby_api_key" type="password" placeholder="Emby API Key">
           <div class="hint">请填写可访问媒体库与图片接口的 Key。</div>
         </div>
+        <div class="form-group">
+          <label for="emby_user_id">用户 ID</label>
+          <input id="emby_user_id" placeholder="留空时自动选择管理员用户">
+          <div class="hint">用于 Emby 用户上下文查询媒体和海报；建议填写实际用户 ID。</div>
+        </div>
         <div class="form-group" style="grid-column:1/-1">
           <div class="form-grid" style="gap:16px">
             <div class="form-group">
@@ -1083,7 +1088,7 @@ function escapeHtmlAttr(value){
 function applyConfigToForm(){
   const cfg = state.config;
   [
-    'emby_server_url','emby_api_key','tmdb_api_key','sort_by','covers_input','covers_output',
+    'emby_server_url','emby_api_key','emby_user_id','tmdb_api_key','sort_by','covers_input','covers_output',
     'zh_font_path','en_font_path',
     'single_blur_size','single_color_ratio','single_zh_font_size','single_en_font_size',
     'single_badge_size_ratio','multi_blur_size','multi_color_ratio','multi_zh_font_size',
@@ -1157,6 +1162,7 @@ function collectConfigPayload(){
   const payload = {
     emby_server_url: document.getElementById('emby_server_url').value.trim(),
     emby_api_key: document.getElementById('emby_api_key').value.trim(),
+    emby_user_id: document.getElementById('emby_user_id').value.trim(),
     tmdb_api_key: document.getElementById('tmdb_api_key').value.trim(),
     sort_by: document.getElementById('sort_by').value || 'Random',
     covers_input: document.getElementById('covers_input').value.trim(),

@@ -32,13 +32,19 @@ const itemFields = "Id,Name,Type,Path,ParentId,ProviderIds,ImageTags,BackdropIma
 type Client struct {
 	baseURL string
 	apiKey  string
+	userID  string
 	http    *http.Client
 }
 
 func New(serverURL, apiKey string) *Client {
+	return NewWithUserID(serverURL, apiKey, "")
+}
+
+func NewWithUserID(serverURL, apiKey, userID string) *Client {
 	return &Client{
 		baseURL: strings.TrimRight(strings.TrimSpace(serverURL), "/"),
 		apiKey:  strings.TrimSpace(apiKey),
+		userID:  strings.TrimSpace(userID),
 		http: &http.Client{
 			Timeout: 30 * time.Second,
 		},
@@ -84,6 +90,10 @@ func (c *Client) getJSON(ctx context.Context, path string, params url.Values, ou
 }
 
 func (c *Client) GetUserID(ctx context.Context) (string, error) {
+	if c.userID != "" {
+		return c.userID, nil
+	}
+
 	var users []map[string]any
 	if err := c.getJSON(ctx, "/Users", nil, &users); err != nil {
 		log.Printf("Emby GET /Users 失败: %v", err)
@@ -315,11 +325,17 @@ func (c *Client) GetItem(ctx context.Context, itemID string) (map[string]any, er
 	if strings.TrimSpace(itemID) == "" {
 		return nil, nil
 	}
+	userID, err := c.GetUserID(ctx)
+	if err != nil || strings.TrimSpace(userID) == "" {
+		return nil, err
+	}
+
 	var item map[string]any
 	params := url.Values{}
 	params.Set("Fields", itemFields)
-	if err := c.getJSON(ctx, "/Items/"+url.PathEscape(itemID), params, &item); err != nil {
-		log.Printf("Emby GET /Items/%s 失败: %v", itemID, err)
+	path := "/Users/" + url.PathEscape(userID) + "/Items/" + url.PathEscape(itemID)
+	if err := c.getJSON(ctx, path, params, &item); err != nil {
+		log.Printf("Emby GET %s 失败: %v", path, err)
 		return nil, nil
 	}
 	return item, nil

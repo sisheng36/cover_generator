@@ -741,7 +741,7 @@ func (s *Service) HandleWebhook(ctx context.Context, data map[string]any, cfg co
 	var imageBytes []byte
 	imageName := "poster.jpg"
 	if imageURL == "" {
-		if downloaded, name, err := downloadEmbyImage(*event, cfg.EmbyServerURL, cfg.EmbyAPIKey); err == nil {
+		if downloaded, name, err := downloadEmbyImage(*event, cfg.EmbyServerURL, cfg.EmbyAPIKey, cfg.EmbyUserID); err == nil {
 			imageBytes = downloaded
 			if name != "" {
 				imageName = name
@@ -765,7 +765,7 @@ func (s *Service) sendAggregatedMessage(seriesID string, cfg config.Config) {
 	var imageBytes []byte
 	imageName := "poster.jpg"
 	if imageURL == "" {
-		if downloaded, name, err := downloadEmbyImage(events[0], cfg.EmbyServerURL, cfg.EmbyAPIKey); err == nil {
+		if downloaded, name, err := downloadEmbyImage(events[0], cfg.EmbyServerURL, cfg.EmbyAPIKey, cfg.EmbyUserID); err == nil {
 			imageBytes = downloaded
 			if name != "" {
 				imageName = name
@@ -836,7 +836,7 @@ func sendTelegram(token, chatID, title, text, imageURL string, imageBytes []byte
 	return resp.StatusCode == http.StatusOK
 }
 
-func downloadEmbyImage(event Event, serverURL, apiKey string) ([]byte, string, error) {
+func downloadEmbyImage(event Event, serverURL, apiKey, userID string) ([]byte, string, error) {
 	if strings.TrimSpace(serverURL) == "" || strings.TrimSpace(apiKey) == "" {
 		return nil, "", fmt.Errorf("emby not configured")
 	}
@@ -844,7 +844,7 @@ func downloadEmbyImage(event Event, serverURL, apiKey string) ([]byte, string, e
 	if len(item) == 0 {
 		return nil, "", fmt.Errorf("missing item")
 	}
-	client := emby.New(serverURL, apiKey)
+	client := emby.NewWithUserID(serverURL, apiKey, userID)
 	preferSeriesPrimary := event.ItemType == "TV"
 	itemForImage := item
 	if preferSeriesPrimary && strings.TrimSpace(asString(item["SeriesPrimaryImageTag"])) == "" && strings.TrimSpace(event.SeriesID) != "" {

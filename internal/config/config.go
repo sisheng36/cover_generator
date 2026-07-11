@@ -19,6 +19,7 @@ type TitleOverride struct {
 type Config struct {
 	EmbyServerURL string `json:"emby_server_url"`
 	EmbyAPIKey    string `json:"emby_api_key"`
+	EmbyUserID    string `json:"emby_user_id"`
 
 	SelectedLibraries []string `json:"selected_libraries"`
 	CoverStyle        string   `json:"cover_style"`
@@ -69,6 +70,7 @@ func Default() Config {
 	return Config{
 		EmbyServerURL: "",
 		EmbyAPIKey:    "",
+		EmbyUserID:    "",
 
 		SelectedLibraries: []string{},
 		CoverStyle:        "single_1",
@@ -175,6 +177,9 @@ func Normalize(raw map[string]any) Config {
 	}
 	if v, ok := raw["emby_api_key"]; ok {
 		cfg.EmbyAPIKey = strings.TrimSpace(asString(v))
+	}
+	if v, ok := raw["emby_user_id"]; ok {
+		cfg.EmbyUserID = strings.TrimSpace(asString(v))
 	}
 	if v, ok := raw["selected_libraries"]; ok {
 		cfg.SelectedLibraries = cleanList(v)
@@ -333,6 +338,7 @@ func Normalize(raw map[string]any) Config {
 
 	cfg.EmbyServerURL = strings.TrimSpace(cfg.EmbyServerURL)
 	cfg.EmbyAPIKey = strings.TrimSpace(cfg.EmbyAPIKey)
+	cfg.EmbyUserID = strings.TrimSpace(cfg.EmbyUserID)
 	cfg.CoverStyle = strings.TrimSpace(cfg.CoverStyle)
 	cfg.SortBy = strings.TrimSpace(cfg.SortBy)
 	cfg.CoversInput = strings.TrimSpace(cfg.CoversInput)

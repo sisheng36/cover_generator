@@ -188,9 +188,11 @@ func TestImportStatsStoreRecentImportsMoveExistingMediaToFront(t *testing.T) {
 func TestRecentImportPosterPathFallsBackToLatestEpisode(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/Items/series-name":
+		case "/Users":
+			writeJSON(w, http.StatusOK, []map[string]any{{"Id": "test-user"}})
+		case "/Users/test-user/Items/series-name":
 			http.NotFound(w, r)
-		case "/Items/episode-2":
+		case "/Users/test-user/Items/episode-2":
 			writeJSON(w, http.StatusOK, map[string]any{
 				"Id":                    "episode-2",
 				"Type":                  "Episode",
@@ -218,7 +220,9 @@ func TestHandleRecentImportPosterProxiesPrimaryImage(t *testing.T) {
 	const posterBody = "poster-bytes"
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/Items/movie-1":
+		case "/Users":
+			writeJSON(w, http.StatusOK, []map[string]any{{"Id": "test-user"}})
+		case "/Users/test-user/Items/movie-1":
 			writeJSON(w, http.StatusOK, map[string]any{
 				"Id":        "movie-1",
 				"Type":      "Movie",

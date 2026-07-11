@@ -155,7 +155,7 @@ func (s *Server) maybeScheduleAutoCover(event *notifier.Event, cfg config.Config
 	resolveCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	client := emby.New(cfg.EmbyServerURL, cfg.EmbyAPIKey)
+	client := emby.NewWithUserID(cfg.EmbyServerURL, cfg.EmbyAPIKey, cfg.EmbyUserID)
 	libraryID := s.resolveLibraryIDForSelectedLibraries(resolveCtx, client, event, cfg.SelectedLibraries)
 	if libraryID == "" {
 		log.Printf("新入库封面联动：无法确定媒体库 item_id=%s path=%q", event.ItemID, event.ItemPath)
@@ -382,7 +382,7 @@ func (s *Server) generateAutoCoverForLibrary(libraryID string) {
 		return
 	}
 
-	client := emby.New(cfg.EmbyServerURL, cfg.EmbyAPIKey)
+	client := emby.NewWithUserID(cfg.EmbyServerURL, cfg.EmbyAPIKey, cfg.EmbyUserID)
 	libraries, err := client.GetLibraries(context.Background())
 	if err != nil {
 		log.Printf("新入库联动：获取媒体库失败: %v", err)
