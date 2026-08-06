@@ -163,6 +163,24 @@ body::after{
   transition:transform .2s,background .2s,box-shadow .2s;
 }
 .nav-cta:hover{background:var(--blue-deep);transform:translateY(-1px);box-shadow:0 11px 22px rgba(8,120,111,.3),0 1px 0 rgba(255,255,255,.28) inset}
+.lang-toggle{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:46px;
+  padding:9px 12px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:var(--surface);
+  color:var(--blue-deep);
+  font-family:var(--font-mono);
+  font-size:12px;
+  font-weight:700;
+  cursor:pointer;
+  box-shadow:var(--shadow-soft),var(--glow);
+  transition:transform .2s,background .2s,border-color .2s,box-shadow .2s;
+}
+.lang-toggle:hover{background:var(--surface-strong);border-color:var(--line-strong);transform:translateY(-1px)}
 
 /* Hero */
 .hero{
@@ -1166,6 +1184,7 @@ body::after{
       <li><a href="#works">其他作品</a></li>
       <li><a href="#credits">灵感</a></li>
     </ul>
+    <button id="langToggle" class="lang-toggle" type="button" onclick="toggleLang()" aria-label="Switch to English">EN</button>
     <a class="nav-cta" href="https://github.com/sisheng36/cover_generator" target="_blank" rel="noreferrer">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56v-2.17c-3.2.7-3.87-1.36-3.87-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.03 1.76 2.69 1.25 3.35.96.1-.75.4-1.25.72-1.54-2.55-.29-5.23-1.28-5.23-5.69 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.16 1.18a10.9 10.9 0 0 1 5.75 0c2.19-1.49 3.15-1.18 3.15-1.18.63 1.59.24 2.76.12 3.05.74.81 1.18 1.84 1.18 3.1 0 4.42-2.69 5.39-5.25 5.68.41.35.78 1.05.78 2.12v3.14c0 .31.21.67.8.55A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg>
       GitHub
@@ -1341,7 +1360,7 @@ body::after{
     </div>
 
     <h3 class="showcase-sub reveal">Telegram 通知示例</h3>
-    <div class="notify-examples">
+    <div class="notify-examples" data-i18n-ignore>
       <article class="notify-card reveal">
         <div class="notify-head">
           <span class="notify-app-icon">
@@ -1654,14 +1673,249 @@ body::after{
 </footer>
 
 <script>
+// ========== 国际化 / i18n ==========
+const I18N_STORAGE_KEY = 'cover-generator-lang';
+const STATIC_I18N = [
+  ['媒体库封面与入库自动化工作台', 'Media Library Cover & Import Automation Workbench'],
+  ['Cover Generator：用 Go 打造的 Emby 媒体库封面生成、Webhook 入库通知、入库统计与自动联动工作台。', 'Cover Generator: a Go-powered Emby workbench for cover generation, webhook import notifications, import stats and automated workflows.'],
+  ['Cover Generator 是一个用 Go 打造的媒体库工作台：自动生成美化封面、监听 Webhook 新入库事件、发送 Telegram 通知，并把入库情况整理成可视化的总览面板。', 'Cover Generator is a Go-powered media library workbench: it generates polished covers, listens for new-import webhook events, sends Telegram notifications, and turns your library activity into a visual overview dashboard.'],
+  ['从 Emby 新入库的那一刻开始，封面、通知和统计都由 Cover Generator 接管。', 'From the moment Emby imports new media, covers, notifications and stats are all handled by Cover Generator.'],
+  ['拉取媒体库海报，按单图、多图等风格自动合成统一封面；支持中英文自定义媒体库名称，保持整个媒体库视觉整齐。', 'Pull library posters and compose unified covers in single-image or multi-image styles, with custom Chinese/English library titles for a clean, consistent library.'],
+  ['Emby 新电影或剧集入库后自动触发封面更新；同一媒体库短时间内的连续入库会自动合并窗口，避免重复刷新。', 'New movies or episodes trigger cover updates automatically; consecutive imports into the same library are merged into one window to avoid redundant refreshes.'],
+  ['新入库、播放、登录等事件即时推送到 Telegram；剧集连续入库自动聚合成一条消息，配合 TMDB 补全评分、类型和简介。', 'New imports, playback and login events are pushed to Telegram instantly; consecutive episodes are aggregated into a single message with TMDB ratings, genres and overviews.'],
+  ['近 30 天每日入库柱状图、今日 / 近 7 天 / 峰值统计，以及最新 32 个媒体的海报墙，入库情况一目了然。', 'A 30-day daily import chart, today / last-7-days / peak stats, and a poster wall of the latest 32 titles — everything at a glance.'],
+  ['按 Cron 表达式定时为选中的媒体库更新封面，也可以一键生成全部或部分媒体库，让封面始终与内容同步。', 'Update covers on a cron schedule, or generate some or all libraries in one click so covers stay in sync.'],
+  ['Go 编写、Docker 一键部署，配置和统计数据都保存在本地 /data 目录，不依赖任何第三方服务，适合家庭媒体中心。', 'Written in Go and deployed with Docker Compose; config and stats live in a local /data directory with no third-party dependencies — ideal for home media centers.'],
+  ['先看看美化后的媒体库封面，以及入库后推送到 Telegram 的通知长什么样。', 'See the beautified library covers and what an import notification looks like in Telegram.'],
+  ['示例与项目实际产出一致：图片为 TMDB 背景图，评分与剧情来自 TMDB 接口。', 'Examples match real project output: images are TMDB backdrops, ratings and plots come from the TMDB API.'],
+  ['不是为了堆功能，而是把媒体库入库后最常做的事，做成一站式的自动化闭环。', 'Not about stacking features — it turns the most common post-import chores into one automated workflow.'],
+  ['新媒体入库 → 封面联动 → Telegram 通知 → 统计记录，全链路自动完成。', 'New media import → cover update → Telegram notification → stats recording, all automatic.'],
+  ['剧集多集连续入库会聚合成一条消息；同一媒体库联动刷新也有窗口期合并。', 'Bulk episode imports are merged into one message; cover refreshes for the same library are windowed and merged.'],
+  ['Go 编译为原生二进制，空闲时内存占用明显低于 PHP 等传统服务端方案；配合 Docker Compose，配置与数据都在本地目录，随时备份和迁移。', 'Go compiles to a native binary with far lower idle memory than PHP-style runtimes; with Docker Compose, config and data stay in local directories, easy to back up and migrate.'],
+  ['界面、通知文案和自定义媒体库名称都对中文友好，适合家庭媒体中心使用。', 'The UI, notification copy and custom library titles are all Chinese-friendly for home media centers.'],
+  ['媒体库、封面风格、通知事件、统计窗口和定时策略都可以按自己的习惯配置。', 'Libraries, cover styles, notification events, stats windows and schedules are all configurable.'],
+  ['Emby 只需要把 Webhook 指向 Cover Generator，剩下的事情交给自动化。', 'Just point Emby’s webhook at Cover Generator and let automation handle the rest.'],
+  ['Docker Compose 一键启动，随后在 Emby 后台把 Webhook 指向 Cover Generator 即可。', 'Start with one Docker Compose command, then point Emby’s webhook at Cover Generator.'],
+  ['将下面配置保存为 ', 'Save the config below as '],
+  ['，在项目目录执行 ', ', then run '],
+  ['，随后打开 ', ', then open '],
+  ['即可进入控制台。', ' to open the console.'],
+  ['在 Emby 的 Webhook 插件中新增通知地址，按下面的参数填写即可开始联动。', 'Add a notification URL in Emby’s Webhook plugin with the parameters below.'],
+  ['仅适用于 Emby 与 Cover Generator 同机部署；跨设备请填写 Cover Generator 的实际内网地址，并保持端口仅内网可访问。', 'only works when Emby and Cover Generator run on the same machine; for other devices use Cover Generator’s real LAN address and keep the port LAN-only.'],
+  ['映射可按实际网络模式保留或调整。', 'mapping can stay or be adjusted for your network mode.'],
+  ['时服务会直接监听宿主机', ', the service listens directly on the host'],
+  ['端口纳入防火墙，仅允许内网访问。控制台中保存了 Emby API Key，如果把端口暴露到公网，可能导致 APIKey 泄露并带来安全损失。', 'port behind the firewall and allow LAN access only. The console stores your Emby API Key; exposing the port to the public internet could leak the APIKey and cause real damage.'],
+  ['部署完成后，请将 Cover Generator 的', 'After deployment, put Cover Generator’s'],
+  ['开发调试时如果希望保持端口可访问，也请确保只在局域网内访问，不要把端口映射或开放到公网。', 'When developing or debugging, if you still want the port reachable, keep it LAN-only and never map or expose it to the public internet.'],
+  ['把散落在下载目录中的文件，变成结构清晰、可直接播放、能持续维护的媒体库。', 'Turns scattered files in your download folders into a clean, playable, maintainable library.'],
+  ['本项目的封面生成与入库监控设计，借鉴了以下开源项目，在此致谢。', 'Cover generation and import-monitoring designs draw on these open-source projects — thank you!'],
+  ['justzerock/MoviePilot-Plugins · 为 Emby / Jellyfin 媒体库生成静态与动态封面的开源封面工具', 'justzerock/MoviePilot-Plugins · open-source cover tooling that generates static and dynamic covers for Emby / Jellyfin libraries'],
+  ['本项目与借鉴项目一致，采用 GNU General Public License v3.0 开源；使用、修改或分发时请遵守 GPL v3.0 协议。', 'Like the referenced project, Cover Generator is open source under the GNU General Public License v3.0; please follow GPL v3.0 when using, modifying or redistributing.'],
+  ['Cover Generator 的自动化能力离不开这些优秀的产品与开放生态，衷心感谢。', 'Cover Generator’s automation relies on these great products and open ecosystems — thank you.'],
+  ['一个工具，打通入库后的整条链路', 'One tool for the entire post-import pipeline'],
+  ['一条入库事件，如何跑完全流程', 'How one import runs the whole pipeline'],
+  ['为什么值得用 Cover Generator', 'Why Cover Generator'],
+  ['部署与快速开始', 'Deploy & Quick Start'],
+  ['Telegram 通知示例', 'Telegram notification examples'],
+  ['媒体库封面风格', 'Library cover styles'],
+  ['Webhook 新入库联动', 'Webhook new-import automation'],
+  ['Telegram 入库通知', 'Telegram import notifications'],
+  ['入库统计总览', 'Import stats overview'],
+  ['自托管与数据自主', 'Self-hosted, data in your hands'],
+  ['自动闭环，少一次手工操作', 'Fully automated loop'],
+  ['通知不刷屏', 'No notification spam'],
+  ['轻量、可迁移', 'Lightweight & portable'],
+  ['中文体验优先', 'Chinese-first experience'],
+  ['灵活可控', 'Flexible and controllable'],
+  ['自动好看，自动通知', 'beautiful & automatically notified'],
+  ['让 Emby 媒体库', 'Make your Emby library'],
+  ['1 · Docker Compose 部署', '1 · Deploy with Docker Compose'],
+  ['2 · 配置 Emby Webhook', '2 · Configure the Emby Webhook'],
+  ['3 · 安全提示', '3 · Security notes'],
+  ['开源许可 · GNU GPL v3.0', 'License · GNU GPL v3.0'],
+  ['查看 LICENSE ↗', 'View LICENSE ↗'],
+  ['媒体库封面生成', 'Library cover generation'],
+  ['核心功能', 'Core Features'],
+  ['效果示例', 'Showcase'],
+  ['为什么选它', 'Why Choose It'],
+  ['工作流', 'Workflow'],
+  ['部署', 'Deploy'],
+  ['其他作品', 'Other Projects'],
+  ['灵感', 'Credits'],
+  ['灵感与借鉴', 'Inspiration & Credits'],
+  ['快速开始', 'Get Started'],
+  ['探索功能', 'Explore Features'],
+  ['返回顶部', 'Back to top'],
+  ['借鉴项目', 'Inspired by'],
+  ['Webhook 入口', 'Webhook endpoint'],
+  ['自动化链路', 'Automation chain'],
+  ['封面 · 通知 · 统计', 'Covers · Notify · Stats'],
+  ['统计窗口', 'Stats window'],
+  ['最近入库卡片', 'Recent import cards'],
+  ['单图风格 1', 'Single-image style 1'],
+  ['单图风格 2', 'Single-image style 2'],
+  ['多图风格 1', 'Multi-image style 1'],
+  ['适合主视觉突出的海报', 'For striking key art'],
+  ['适合人物和场景铺满画面', 'For art that fills the frame'],
+  ['适合九宫格海报墙效果', 'For a grid poster-wall effect'],
+  ['多风格', 'Multi-style'],
+  ['自定义标题', 'Custom titles'],
+  ['手动上传', 'Manual upload'],
+  ['窗口合并', 'Window merging'],
+  ['自动刷新', 'Auto refresh'],
+  ['聚合消息', 'Aggregated messages'],
+  ['多事件', 'Multi-event'],
+  ['30 天窗口', '30-day window'],
+  ['海报墙', 'Poster wall'],
+  ['峰值统计', 'Peak stats'],
+  ['手动生成', 'Manual generation'],
+  ['全量刷新', 'Full refresh'],
+  ['本地持久化', 'Local persistence'],
+  ['请求地址', 'Request URL'],
+  ['内容类型', 'Content type'],
+  ['触发事件', 'Trigger event'],
+  ['媒体库 → 已添加新媒体', 'Media library → New media added'],
+  ['事件: 媒体库 → 已添加新媒体', 'Event: Media library → New media added'],
+  ['# Emby Webhook 配置', '# Emby Webhook config'],
+  ['# Emby 连接', '# Emby connection'],
+  ['# 封面', '# Covers'],
+  ['# 自动化', '# Automation'],
+  ['# 状态', '# Status'],
+  ['Emby 新入库', 'Emby new import'],
+  ['电影或剧集文件进入媒体库', 'A movie or episode enters the library'],
+  ['Webhook 推送', 'Webhook delivery'],
+  ['事件发往 /webhook/emby', 'Event sent to /webhook/emby'],
+  ['Cover Generator 解析', 'Cover Generator parses'],
+  ['识别媒体类型、剧集与服务器', 'Detects media type, episode and server'],
+  ['并行执行', 'Parallel execution'],
+  ['封面联动 + Telegram + 统计', 'Cover update + Telegram + stats'],
+  ['总览呈现', 'Overview'],
+  ['入库数量与最近海报一目了然', 'Import counts and recent posters at a glance'],
+  ['我做的另一个媒体库工具，欢迎体验。', 'Another media library tool by me — give it a try.'],
+  ['媒体库管理与 API 支持', 'Library management & API support'],
+  ['稳定可靠的通知通道', 'Reliable notification channel'],
+  ['电影剧集元数据与海报来源', 'Movie & TV metadata and poster source'],
+  ['提示：', 'Note: '],
+  ['提示：使用', 'Note: with'],
+  ['复制', 'Copy'],
+  ['主导航', 'Primary navigation'],
+  ['技术标签', 'Tech tags'],
+  ['核心数据', 'Core stats'],
+  ['Cover Generator 终端演示', 'Cover Generator terminal demo'],
+  ['Cover Generator 配置示例', 'Cover Generator config example'],
+  ['技术栈', 'Tech stack'],
+  ['查看其他作品 StrmTool', 'View another project, StrmTool'],
+  ['查看借鉴项目 Yahaha Cover Studio', 'View referenced project, Yahaha Cover Studio'],
+  ['示例', 'example'],
+  ['封面示例', 'cover example'],
+  ['背景图', 'backdrop'],
+  ['入库', 'import'],
+  ['媒体库', 'library'],
+  ['封面', 'cover'],
+  ['通知', 'notification'],
+  ['统计', 'stats'],
+  ['设置', 'settings'],
+  ['生成', 'generate'],
+  ['刷新', 'refresh'],
+  ['剧集', 'episode'],
+  ['电影', 'movie'],
+  ['媒体', 'media'],
+  ['评分', 'rating'],
+  ['剧情', 'plot'],
+  ['默认', 'default'],
+  ['保存', 'save'],
+  ['，', ', '],
+  ['。', '.'],
+  ['；', '; '],
+  ['：', ': '],
+  ['、', ', '],
+];
+const SORTED_STATIC_I18N = [...STATIC_I18N].sort((a, b) => b[0].length - a[0].length);
+let currentLang = 'zh';
+
+function detectLang(){
+  try{
+    const saved = localStorage.getItem(I18N_STORAGE_KEY);
+    if(saved === 'zh' || saved === 'en')return saved;
+  }catch(error){ /* ignore */ }
+  return String(navigator.language || '').toLowerCase().startsWith('zh') ? 'zh' : 'en';
+}
+
+function setCurrentLang(lang){
+  currentLang = lang;
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+  const btn = document.getElementById('langToggle');
+  if(btn){
+    btn.textContent = lang === 'zh' ? 'EN' : '中文';
+    btn.setAttribute('aria-label', lang === 'zh' ? 'Switch to English' : '切换到中文');
+    btn.title = lang === 'zh' ? 'Switch to English' : '切换到中文';
+  }
+}
+
+function toggleLang(){
+  const next = currentLang === 'zh' ? 'en' : 'zh';
+  try{ localStorage.setItem(I18N_STORAGE_KEY, next); }catch(error){ /* ignore */ }
+  window.location.reload();
+}
+
+function translateText(value){
+  if(!value)return value;
+  let out = String(value);
+  for(const [zh, en] of SORTED_STATIC_I18N){
+    if(out.includes(zh))out = out.split(zh).join(en);
+  }
+  return out;
+}
+
+function t(zh, en){
+  return currentLang === 'en' ? en : zh;
+}
+
+function tt(zh, en, ...args){
+  const template = currentLang === 'en' ? en : zh;
+  return String(template).replace(/\{(\d+)\}/g, (_, index)=>String(args[Number(index)] ?? ''));
+}
+
+function applyI18n(){
+  if(currentLang !== 'en')return;
+  const isSkipped = (el) => Boolean(el?.closest?.('[data-i18n-ignore]'));
+  const attrs = ['placeholder', 'title', 'aria-label', 'alt'];
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT, {
+    acceptNode(node){
+      if(!node.nodeValue || !node.nodeValue.trim())return NodeFilter.FILTER_REJECT;
+      if(isSkipped(node.parentElement))return NodeFilter.FILTER_REJECT;
+      return NodeFilter.FILTER_ACCEPT;
+    }
+  });
+  const textNodes = [];
+  while(walker.nextNode())textNodes.push(walker.currentNode);
+  textNodes.forEach((node)=>{ node.nodeValue = translateText(node.nodeValue); });
+  document.querySelectorAll('[' + attrs.join('],[') + ']').forEach((el)=>{
+    if(isSkipped(el))return;
+    attrs.forEach((attr)=>{
+      if(el.hasAttribute(attr))el.setAttribute(attr, translateText(el.getAttribute(attr)));
+    });
+  });
+  document.title = translateText(document.title);
+  document.querySelectorAll('meta[name="description"], meta[name="keywords"]').forEach((meta)=>{
+    if(meta.content)meta.content = translateText(meta.content);
+  });
+}
+
+function initI18n(){
+  setCurrentLang(detectLang());
+  if(currentLang === 'en')applyI18n();
+}
+initI18n();
+
 const terminalLines = [
-  {text:'$ cover-generator', html:'<span class="dim">$</span> <span class="blue">cover-generator</span>'},
-  {text:'[system] 已启动 · listening on :8055', html:'<span class="dim">[system]</span> <span class="green">已启动</span> <span class="dim">· listening on :8055</span>'},
-  {text:'[webhook] 收到 library.new → 电影《流浪地球 3》', html:'<span class="dim">[webhook]</span> <span class="green">收到</span> <span class="blue">library.new</span> <span class="dim">→ 电影《流浪地球 3》</span>'},
-  {text:'[cover] 已更新媒体库封面 · style=single_2', html:'<span class="dim">[cover]</span> <span class="green">已更新媒体库封面</span> <span class="dim">· style=single_2</span>'},
-  {text:'[notify] Telegram 通知已发送 · 1 recipient', html:'<span class="dim">[notify]</span> <span class="green">Telegram 通知已发送</span> <span class="dim">· 1 recipient</span>'},
-  {text:'[stats] 今日入库 +1 · 30d total 128', html:'<span class="dim">[stats]</span> <span class="green">今日入库 +1</span> <span class="dim">· 30d total 128</span>'},
-  {text:'[scheduler] next run · 03:00 Asia/Shanghai', html:'<span class="dim">[scheduler]</span> <span class="orange">next run</span> <span class="dim">· 03:00 Asia/Shanghai</span>'}
+  {text:['$ cover-generator','$ cover-generator'], html:['<span class="dim">$</span> <span class="blue">cover-generator</span>','<span class="dim">$</span> <span class="blue">cover-generator</span>']},
+  {text:['[system] 已启动 · listening on :8055','[system] started · listening on :8055'], html:['<span class="dim">[system]</span> <span class="green">已启动</span> <span class="dim">· listening on :8055</span>','<span class="dim">[system]</span> <span class="green">started</span> <span class="dim">· listening on :8055</span>']},
+  {text:['[webhook] 收到 library.new → 电影《流浪地球 3》','[webhook] library.new received → Movie “The Wandering Earth 3”'], html:['<span class="dim">[webhook]</span> <span class="green">收到</span> <span class="blue">library.new</span> <span class="dim">→ 电影《流浪地球 3》</span>','<span class="dim">[webhook]</span> <span class="green">received</span> <span class="blue">library.new</span> <span class="dim">→ Movie “The Wandering Earth 3”</span>']},
+  {text:['[cover] 已更新媒体库封面 · style=single_2','[cover] library covers updated · style=single_2'], html:['<span class="dim">[cover]</span> <span class="green">已更新媒体库封面</span> <span class="dim">· style=single_2</span>','<span class="dim">[cover]</span> <span class="green">library covers updated</span> <span class="dim">· style=single_2</span>']},
+  {text:['[notify] Telegram 通知已发送 · 1 recipient','[notify] Telegram notification sent · 1 recipient'], html:['<span class="dim">[notify]</span> <span class="green">Telegram 通知已发送</span> <span class="dim">· 1 recipient</span>','<span class="dim">[notify]</span> <span class="green">Telegram notification sent</span> <span class="dim">· 1 recipient</span>']},
+  {text:['[stats] 今日入库 +1 · 30d total 128','[stats] +1 import today · 30d total 128'], html:['<span class="dim">[stats]</span> <span class="green">今日入库 +1</span> <span class="dim">· 30d total 128</span>','<span class="dim">[stats]</span> <span class="green">+1 import today</span> <span class="dim">· 30d total 128</span>']},
+  {text:['[scheduler] next run · 03:00 Asia/Shanghai','[scheduler] next run · 03:00 Asia/Shanghai'], html:['<span class="dim">[scheduler]</span> <span class="orange">next run</span> <span class="dim">· 03:00 Asia/Shanghai</span>','<span class="dim">[scheduler]</span> <span class="orange">next run</span> <span class="dim">· 03:00 Asia/Shanghai</span>']}
 ];
 const terminalBody = document.getElementById('terminalBody');
 let lineIndex = 0;
@@ -1678,8 +1932,10 @@ function typeTerminal(){
     return;
   }
   const line = terminalLines[lineIndex];
+  const langIndex = currentLang === 'en' ? 1 : 0;
+  const text = line.text[langIndex];
   charIndex += 1;
-  const partial = escapeTerminal(line.text.slice(0, charIndex));
+  const partial = escapeTerminal(text.slice(0, charIndex));
   let current = terminalBody.querySelector('.term-line:last-child');
   if(!current || current.dataset.done === 'true'){
     current = document.createElement('div');
@@ -1688,8 +1944,8 @@ function typeTerminal(){
     terminalBody.appendChild(current);
   }
   current.innerHTML = partial + '<span class="term-cursor"></span>';
-  if(charIndex >= line.text.length){
-    current.innerHTML = line.html + '<span class="term-cursor"></span>';
+  if(charIndex >= text.length){
+    current.innerHTML = line.html[langIndex] + '<span class="term-cursor"></span>';
     current.dataset.done = 'true';
     lineIndex += 1;
     charIndex = 0;
@@ -1762,14 +2018,14 @@ document.querySelectorAll('.copy-btn').forEach(button=>{
     const text = target.textContent.replace(/^\$ /gm, '').trim();
     try{
       await navigator.clipboard.writeText(text);
-      button.textContent = '已复制 ✓';
+      button.textContent = t('已复制 ✓', 'Copied ✓');
       button.classList.add('copied');
       setTimeout(()=>{
-        button.textContent = '复制';
+        button.textContent = t('复制', 'Copy');
         button.classList.remove('copied');
       }, 1800);
     }catch(error){
-      button.textContent = '复制失败';
+      button.textContent = t('复制失败', 'Copy failed');
     }
   });
 });
