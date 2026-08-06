@@ -631,6 +631,44 @@ body::before{
   font-family:var(--font-mono);
   font-size:11.5px;
 }
+.webhook-config{
+  display:grid;
+  gap:10px;
+  margin-top:16px;
+}
+.config-row{
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:8px 14px;
+  padding:10px 12px;
+  border:1px solid var(--line);
+  border-radius:13px;
+  background:rgba(255,255,255,.54);
+  box-shadow:0 1px 0 rgba(255,255,255,.72) inset;
+}
+.config-row span{
+  flex:0 0 auto;
+  color:var(--muted);
+  font-size:12px;
+  font-weight:500;
+}
+.config-row code{
+  display:inline-block;
+  padding:2px 8px;
+  border-radius:7px;
+  background:rgba(8,120,111,.08);
+  color:var(--blue-deep);
+  font-family:var(--font-mono);
+  font-size:11.5px;
+  overflow-wrap:anywhere;
+}
+.webhook-hint{
+  margin-top:12px;
+  color:var(--muted);
+  font-size:11.5px;
+  line-height:1.6;
+}
 .security-notice{
   display:flex;
   gap:15px;
@@ -1220,19 +1258,32 @@ body::before{
         </div>
       </article>
       <article class="quick-card reveal reveal-delay-1">
-        <h3>2 · 接入 Emby Webhook</h3>
-        <p>在 Emby 的 Webhook 插件中新增通知地址，事件选择新媒体入库即可开始联动。</p>
+        <h3>2 · 配置 Emby Webhook</h3>
+        <p>在 Emby 的 Webhook 插件中新增通知地址，按下面的参数填写即可开始联动。</p>
+        <div class="webhook-config">
+          <div class="config-row">
+            <span>请求地址</span>
+            <code>http://127.0.0.1:8055/webhook/emby</code>
+          </div>
+          <div class="config-row">
+            <span>内容类型</span>
+            <code>application/json</code>
+          </div>
+          <div class="config-row">
+            <span>触发事件</span>
+            <code>媒体库 → 已添加新媒体</code>
+          </div>
+        </div>
+        <p class="webhook-hint">提示：<code>127.0.0.1</code> 仅适用于 Emby 与 EmbyTool 同机部署；跨设备请填写 EmbyTool 的实际内网地址，并保持端口仅内网可访问。</p>
         <div class="copy-wrap">
           <div class="copy-bar">
             <span>webhook</span>
             <button class="copy-btn" type="button" data-copy-target="webhookCode">复制</button>
           </div>
-          <div class="copy-code" id="webhookCode"><span class="cmt"># Emby Webhook 地址</span>
-<span class="cmd">$ POST /webhook/emby</span>
-
-<span class="out">"event": "ItemAdded"</span>
-<span class="out">"item.type": "Movie / Episode"</span>
-<span class="out">→ 封面 · 通知 · 统计</span></div>
+          <div class="copy-code" id="webhookCode"><span class="cmt"># Emby Webhook 配置</span>
+<span class="cmd">POST http://127.0.0.1:8055/webhook/emby</span>
+<span class="cmd">Content-Type: application/json</span>
+<span class="out">事件: 媒体库 → 已添加新媒体</span></div>
         </div>
       </article>
     </div>
