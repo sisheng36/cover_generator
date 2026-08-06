@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EmbyTool</title>
-<meta name="description" content="EmbyTool：为 Emby 媒体库生成美化封面，并通过 webhook 监听新媒体入库后发送 Telegram 通知。">
+<title>Cover Generator</title>
+<meta name="description" content="Cover Generator：为 Emby 媒体库生成美化封面，并通过 webhook 监听新媒体入库后发送 Telegram 通知。">
 <meta name="theme-color" content="#0f766e">
 <link rel="icon" type="image/svg+xml" href="/static/favicon.svg">
 <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png">
@@ -251,14 +251,14 @@ h3{font-weight:600}
     <div class="brand-lockup">
       <img class="brand-mark" src="/static/favicon.svg" alt="">
       <div>
-        <h1>EmbyTool</h1>
+        <h1>Cover Generator</h1>
         <p class="page-subtitle">媒体库封面与入库工作台<span id="appVersion" class="app-version"></span></p>
       </div>
     </div>
     <div class="app-context"><span class="app-context-dot"></span>媒体库工作台</div>
   </header>
 
-  <div class="top-tabs" role="tablist" aria-label="EmbyTool 页面">
+  <div class="top-tabs" role="tablist" aria-label="Cover Generator 页面">
     <button class="tab-btn active" data-page="overview" role="tab" aria-selected="true" onclick="switchPage('overview')">总览</button>
     <button class="tab-btn" data-page="cover" role="tab" aria-selected="false" onclick="switchPage('cover')">媒体封面生成</button>
     <button class="tab-btn" data-page="notify" role="tab" aria-selected="false" onclick="switchPage('notify')">入库通知</button>

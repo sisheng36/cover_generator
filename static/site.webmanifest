@@ -1,6 +1,6 @@
 {
-  "name": "EmbyTool",
-  "short_name": "EmbyTool",
+  "name": "Cover Generator",
+  "short_name": "Cover Generator",
   "description": "Emby 媒体库封面生成与新媒体入库通知工具",
   "start_url": "/",
   "display": "standalone",
