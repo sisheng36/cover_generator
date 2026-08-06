@@ -737,6 +737,62 @@ body::before{
   transform:translate(3px,-3px);
 }
 
+/* Thanks */
+.thanks-block{
+  margin-top:28px;
+  padding:24px;
+  border:1px solid var(--line);
+  border-radius:22px;
+  background:var(--surface-soft);
+  box-shadow:0 1px 0 rgba(255,255,255,.72) inset;
+}
+.thanks-block h3{
+  margin-top:8px;
+  font-family:var(--font-display);
+  font-size:20px;
+  font-weight:700;
+}
+.thanks-block p{
+  margin-top:6px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.7;
+}
+.thanks-list{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:12px;
+  margin-top:18px;
+}
+.thanks-chip{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  padding:16px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:var(--surface);
+  color:var(--text);
+  text-decoration:none;
+  box-shadow:0 1px 0 rgba(255,255,255,.7) inset;
+  transition:transform .22s,border-color .22s,box-shadow .22s;
+}
+.thanks-chip:hover{
+  transform:translateY(-2px);
+  border-color:var(--line-strong);
+  box-shadow:var(--shadow-soft);
+}
+.thanks-chip strong{
+  font-family:var(--font-display);
+  font-size:15px;
+  font-weight:700;
+}
+.thanks-chip small{
+  color:var(--muted);
+  font-size:11.5px;
+  line-height:1.55;
+}
+
 /* Footer */
 .footer{
   margin-top:70px;
@@ -780,6 +836,7 @@ body::before{
   .nav-links{display:none}
   .features{grid-template-columns:1fr}
   .stats{grid-template-columns:1fr 1fr}
+  .thanks-list{grid-template-columns:1fr}
   .stat-value{font-size:28px}
   .section{padding:42px 0 10px}
   .hero h1{font-size:38px}
@@ -1141,6 +1198,26 @@ body::before{
       </span>
       <span class="credit-arrow" aria-hidden="true">↗</span>
     </a>
+
+    <div class="thanks-block reveal reveal-delay-1">
+      <span class="section-kicker">thanks</span>
+      <h3>致谢</h3>
+      <p>EmbyTool 的自动化能力离不开这些优秀的产品与开放生态，衷心感谢。</p>
+      <div class="thanks-list">
+        <a class="thanks-chip" href="https://emby.media" target="_blank" rel="noreferrer">
+          <strong>Emby</strong>
+          <small>媒体库管理与 API 支持</small>
+        </a>
+        <a class="thanks-chip" href="https://telegram.org" target="_blank" rel="noreferrer">
+          <strong>Telegram</strong>
+          <small>稳定可靠的通知通道</small>
+        </a>
+        <a class="thanks-chip" href="https://www.themoviedb.org" target="_blank" rel="noreferrer">
+          <strong>TMDB</strong>
+          <small>电影剧集元数据与海报来源</small>
+        </a>
+      </div>
+    </div>
   </section>
 </main>
 
