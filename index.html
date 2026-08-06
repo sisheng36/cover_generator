@@ -1,0 +1,1403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EmbyTool · 媒体库封面与入库自动化工作台</title>
+<meta name="description" content="EmbyTool：用 Go 打造的 Emby 媒体库封面生成、Webhook 入库通知、入库统计与自动联动工作台。">
+<meta name="theme-color" content="#08786f">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2308786f'/%3E%3Cpath d='M20 18h24v6H20zm0 11h24v6H20zm0 11h24v6H20z' fill='%23fff'/%3E%3C/svg%3E">
+<script>document.documentElement.classList.add('js');</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@600;700;800&amp;family=Plus+Jakarta+Sans:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;600&amp;display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#dce8e6;
+  --surface:rgba(255,255,255,.56);
+  --surface-strong:rgba(255,255,255,.76);
+  --surface-soft:rgba(239,247,245,.62);
+  --text:#1b2926;
+  --muted:#5f6f6b;
+  --line:rgba(255,255,255,.78);
+  --line-strong:rgba(14,106,98,.22);
+  --blue:#08786f;
+  --blue-deep:#065f58;
+  --blue-soft:rgba(225,242,237,.82);
+  --green:#16835d;
+  --green-soft:rgba(232,246,238,.86);
+  --orange:#b8532e;
+  --orange-soft:rgba(250,238,233,.86);
+  --shadow:0 18px 44px rgba(30,54,49,.14),0 1px 0 rgba(255,255,255,.76) inset;
+  --shadow-soft:0 8px 22px rgba(30,54,49,.1),0 1px 0 rgba(255,255,255,.78) inset;
+  --glow:0 0 0 1px rgba(255,255,255,.28) inset;
+  --radius:24px;
+  --radius-sm:16px;
+  --font-display:"Outfit","PingFang SC","Microsoft YaHei",sans-serif;
+  --font-body:"Plus Jakarta Sans","PingFang SC","Microsoft YaHei",sans-serif;
+  --font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  min-height:100vh;
+  font-family:var(--font-body);
+  color:var(--text);
+  background:var(--bg);
+  line-height:1.55;
+  overflow-x:hidden;
+}
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:-2;
+  pointer-events:none;
+  background:
+    radial-gradient(900px 480px at 12% -8%, rgba(8,120,111,.18), transparent 62%),
+    radial-gradient(820px 460px at 92% 8%, rgba(22,131,93,.14), transparent 60%),
+    radial-gradient(760px 560px at 50% 110%, rgba(184,83,46,.09), transparent 58%),
+    linear-gradient(160deg, #eaf2ef 0%, #d9e7e4 48%, #d4e3e0 100%);
+}
+.bg-grid{
+  position:fixed;
+  inset:0;
+  z-index:-1;
+  pointer-events:none;
+  background-image:
+    linear-gradient(rgba(8,120,111,.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(8,120,111,.045) 1px, transparent 1px);
+  background-size:44px 44px;
+  mask-image:linear-gradient(to bottom, rgba(0,0,0,.9), transparent 78%);
+  -webkit-mask-image:linear-gradient(to bottom, rgba(0,0,0,.9), transparent 78%);
+}
+.container{width:min(1180px, calc(100% - 40px));margin:0 auto}
+
+/* Nav */
+.nav-wrap{
+  position:sticky;
+  top:14px;
+  z-index:50;
+  margin:14px auto 0;
+  width:min(1180px, calc(100% - 40px));
+}
+.nav{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:10px 14px 10px 16px;
+  border:1px solid var(--line);
+  border-radius:20px;
+  background:rgba(255,255,255,.62);
+  box-shadow:var(--shadow-soft),var(--glow);
+  backdrop-filter:blur(18px) saturate(130%);
+  -webkit-backdrop-filter:blur(18px) saturate(130%);
+}
+.brand{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  color:var(--text);
+  text-decoration:none;
+}
+.brand-mark{
+  width:38px;
+  height:38px;
+  border-radius:13px;
+  box-shadow:0 7px 16px rgba(8,120,111,.24),0 1px 0 rgba(255,255,255,.42) inset;
+}
+.brand-name{
+  font-family:var(--font-display);
+  font-size:18px;
+  font-weight:800;
+  letter-spacing:.2px;
+}
+.brand-sub{
+  display:block;
+  font-family:var(--font-mono);
+  font-size:10px;
+  color:var(--muted);
+  letter-spacing:.4px;
+}
+.nav-links{
+  display:flex;
+  align-items:center;
+  gap:4px;
+  list-style:none;
+}
+.nav-links a{
+  display:block;
+  padding:8px 12px;
+  border-radius:12px;
+  color:var(--muted);
+  font-size:13px;
+  font-weight:500;
+  text-decoration:none;
+  transition:background .2s,color .2s,transform .2s;
+}
+.nav-links a:hover{background:rgba(255,255,255,.5);color:var(--text);transform:translateY(-1px)}
+.nav-cta{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:9px 15px;
+  border-radius:13px;
+  background:var(--blue);
+  color:#fff;
+  font-size:13px;
+  font-weight:600;
+  text-decoration:none;
+  box-shadow:0 8px 18px rgba(8,120,111,.26),0 1px 0 rgba(255,255,255,.28) inset;
+  transition:transform .2s,background .2s,box-shadow .2s;
+}
+.nav-cta:hover{background:var(--blue-deep);transform:translateY(-1px);box-shadow:0 11px 22px rgba(8,120,111,.3),0 1px 0 rgba(255,255,255,.28) inset}
+
+/* Hero */
+.hero{
+  display:grid;
+  grid-template-columns:1.04fr .96fr;
+  gap:44px;
+  align-items:center;
+  padding:88px 0 56px;
+}
+.eyebrow{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:7px 12px;
+  border:1px solid rgba(8,120,111,.18);
+  border-radius:999px;
+  background:var(--blue-soft);
+  color:var(--blue-deep);
+  font-family:var(--font-mono);
+  font-size:11px;
+  font-weight:600;
+  letter-spacing:.4px;
+  box-shadow:0 1px 0 rgba(255,255,255,.72) inset;
+}
+.eyebrow-dot{
+  width:7px;
+  height:7px;
+  border-radius:50%;
+  background:var(--green);
+  box-shadow:0 0 0 0 rgba(22,131,93,.4);
+  animation:pulse 2.4s ease-out infinite;
+}
+@keyframes pulse{
+  0%{box-shadow:0 0 0 0 rgba(22,131,93,.38)}
+  70%{box-shadow:0 0 0 9px rgba(22,131,93,0)}
+  100%{box-shadow:0 0 0 0 rgba(22,131,93,0)}
+}
+.hero h1{
+  margin:22px 0 18px;
+  font-family:var(--font-display);
+  font-size:clamp(42px, 6vw, 72px);
+  line-height:1.04;
+  font-weight:800;
+  letter-spacing:-1.6px;
+}
+.hero h1 .gradient{
+  background:linear-gradient(115deg,#0b8b80 8%,#16835d 52%,#b8532e 96%);
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+}
+.hero-lead{
+  max-width:560px;
+  color:var(--muted);
+  font-size:16px;
+  line-height:1.75;
+}
+.hero-tags{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:22px;
+}
+.hero-tag{
+  display:inline-flex;
+  align-items:center;
+  gap:7px;
+  padding:7px 11px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:var(--surface);
+  color:var(--muted);
+  font-family:var(--font-mono);
+  font-size:11px;
+  box-shadow:0 1px 0 rgba(255,255,255,.7) inset;
+}
+.hero-tag::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--blue)}
+.hero-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:12px;
+  margin-top:30px;
+}
+.btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:9px;
+  padding:12px 20px;
+  border-radius:15px;
+  font-size:14px;
+  font-weight:600;
+  text-decoration:none;
+  cursor:pointer;
+  border:1px solid transparent;
+  transition:transform .2s,background .2s,box-shadow .2s,border-color .2s;
+}
+.btn-primary{
+  background:var(--blue);
+  color:#fff;
+  box-shadow:0 10px 22px rgba(8,120,111,.28),0 1px 0 rgba(255,255,255,.3) inset;
+}
+.btn-primary:hover{background:var(--blue-deep);transform:translateY(-2px)}
+.btn-ghost{
+  background:var(--surface);
+  border-color:var(--line);
+  color:var(--text);
+  box-shadow:var(--shadow-soft),var(--glow);
+}
+.btn-ghost:hover{background:var(--surface-strong);border-color:var(--line-strong);transform:translateY(-2px)}
+
+/* Terminal */
+.terminal{
+  position:relative;
+  border:1px solid rgba(255,255,255,.82);
+  border-radius:20px;
+  background:rgba(17,32,29,.9);
+  box-shadow:0 30px 70px rgba(17,45,40,.28),0 1px 0 rgba(255,255,255,.2) inset;
+  overflow:hidden;
+  animation:float 7s ease-in-out infinite;
+}
+@keyframes float{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-8px)}
+}
+.terminal::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  background:linear-gradient(rgba(255,255,255,.05), transparent 38%);
+}
+.terminal-bar{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  padding:13px 16px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.035);
+}
+.term-dot{width:11px;height:11px;border-radius:50%}
+.term-dot:nth-child(1){background:#ff5f57}
+.term-dot:nth-child(2){background:#febc2e}
+.term-dot:nth-child(3){background:#28c840}
+.terminal-title{
+  margin-left:8px;
+  color:rgba(255,255,255,.52);
+  font-family:var(--font-mono);
+  font-size:11px;
+  letter-spacing:.3px;
+}
+.terminal-body{
+  min-height:258px;
+  padding:20px 20px 22px;
+  font-family:var(--font-mono);
+  font-size:12.5px;
+  line-height:1.85;
+  color:rgba(236,249,244,.92);
+}
+.term-line{white-space:pre-wrap;word-break:break-word}
+.term-line .dim{color:rgba(255,255,255,.42)}
+.term-line .blue{color:#63d6cb}
+.term-line .green{color:#7fe0ae}
+.term-line .orange{color:#ffb07c}
+.term-cursor{
+  display:inline-block;
+  width:8px;
+  height:15px;
+  margin-left:2px;
+  vertical-align:-2px;
+  background:#9fe8dd;
+  animation:blink 1s steps(2,start) infinite;
+}
+@keyframes blink{50%{opacity:0}}
+
+/* Stats */
+.stats{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:14px;
+  padding:10px 0 28px;
+}
+.stat-card{
+  position:relative;
+  padding:20px;
+  border:1px solid var(--line);
+  border-radius:19px;
+  background:var(--surface);
+  box-shadow:var(--shadow-soft),var(--glow);
+  backdrop-filter:blur(16px) saturate(120%);
+  -webkit-backdrop-filter:blur(16px) saturate(120%);
+  overflow:hidden;
+  transition:transform .25s,box-shadow .25s;
+}
+.stat-card:hover{transform:translateY(-3px);box-shadow:var(--shadow),var(--glow)}
+.stat-card::after{
+  content:"";
+  position:absolute;
+  right:-22px;
+  top:-22px;
+  width:74px;
+  height:74px;
+  border-radius:50%;
+  background:radial-gradient(circle, rgba(8,120,111,.16), transparent 68%);
+}
+.stat-value{
+  font-family:var(--font-display);
+  font-size:34px;
+  line-height:1;
+  font-weight:800;
+  color:var(--blue);
+  font-variant-numeric:tabular-nums;
+}
+.stat-label{margin-top:8px;color:var(--muted);font-size:13px;font-weight:500}
+.stat-detail{display:block;margin-top:2px;color:var(--muted);font-size:11px;font-family:var(--font-mono)}
+
+/* Sections */
+.section{padding:54px 0 18px}
+.section-head{margin-bottom:30px}
+.section-kicker{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  color:var(--blue);
+  font-family:var(--font-mono);
+  font-size:12px;
+  font-weight:600;
+  letter-spacing:.5px;
+}
+.section-kicker::before{content:"//";color:var(--orange)}
+.section-head h2{
+  margin-top:8px;
+  font-family:var(--font-display);
+  font-size:clamp(26px, 4vw, 38px);
+  line-height:1.16;
+  font-weight:800;
+  letter-spacing:-.6px;
+}
+.section-desc{
+  max-width:640px;
+  margin-top:10px;
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.7;
+}
+
+/* Features */
+.features{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:16px;
+}
+.feature-card{
+  position:relative;
+  padding:24px;
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  background:var(--surface);
+  box-shadow:var(--shadow-soft),var(--glow);
+  backdrop-filter:blur(16px) saturate(120%);
+  -webkit-backdrop-filter:blur(16px) saturate(120%);
+  transition:transform .28s,box-shadow .28s,border-color .28s;
+  overflow:hidden;
+}
+.feature-card:hover{transform:translateY(-5px);border-color:var(--line-strong);box-shadow:var(--shadow),var(--glow)}
+.feature-card::before{
+  content:"";
+  position:absolute;
+  inset:0 0 auto;
+  height:3px;
+  background:linear-gradient(90deg,var(--blue),var(--green),transparent);
+  opacity:0;
+  transition:opacity .28s;
+}
+.feature-card:hover::before{opacity:1}
+.feature-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:48px;
+  height:48px;
+  border-radius:15px;
+  background:var(--blue-soft);
+  color:var(--blue);
+  box-shadow:0 1px 0 rgba(255,255,255,.8) inset;
+}
+.feature-card h3{
+  margin-top:18px;
+  font-family:var(--font-display);
+  font-size:17px;
+  font-weight:700;
+}
+.feature-card p{
+  margin-top:8px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.7;
+}
+.feature-tags{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:15px;
+}
+.feature-tag{
+  padding:4px 8px;
+  border:1px solid rgba(8,120,111,.15);
+  border-radius:8px;
+  background:rgba(255,255,255,.46);
+  color:var(--blue-deep);
+  font-family:var(--font-mono);
+  font-size:10px;
+}
+
+/* Advantages */
+.advantages{
+  display:grid;
+  grid-template-columns:1.06fr .94fr;
+  gap:22px;
+  align-items:stretch;
+}
+.advantage-list{
+  display:grid;
+  gap:12px;
+}
+.advantage-item{
+  display:flex;
+  gap:13px;
+  align-items:flex-start;
+  padding:17px 18px;
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:var(--surface);
+  box-shadow:0 1px 0 rgba(255,255,255,.68) inset;
+}
+.check{
+  flex:0 0 auto;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  width:24px;
+  height:24px;
+  margin-top:2px;
+  border-radius:9px;
+  background:var(--green-soft);
+  color:var(--green);
+  font-family:var(--font-mono);
+  font-size:12px;
+  font-weight:700;
+}
+.advantage-item h3{font-size:14px;font-weight:600}
+.advantage-item p{margin-top:3px;color:var(--muted);font-size:12.5px;line-height:1.6}
+.code-panel{
+  padding:22px;
+  border:1px solid rgba(255,255,255,.82);
+  border-radius:20px;
+  background:rgba(17,32,29,.9);
+  box-shadow:0 24px 56px rgba(17,45,40,.22);
+  color:rgba(236,249,244,.9);
+  font-family:var(--font-mono);
+  font-size:12.5px;
+  line-height:1.9;
+  overflow:hidden;
+}
+.code-panel-head{
+  display:flex;
+  justify-content:space-between;
+  margin-bottom:14px;
+  color:rgba(255,255,255,.45);
+  font-size:11px;
+  letter-spacing:.4px;
+}
+.code-panel pre{margin:0;white-space:pre-wrap;word-break:break-word}
+.code-panel .c{color:rgba(255,255,255,.42)}
+.code-panel .k{color:#8ee6dc}
+.code-panel .s{color:#ffd9a8}
+.code-panel .ok{color:#7fe0ae}
+
+/* Flow */
+.flow{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:12px;
+  align-items:stretch;
+}
+.flow-node{
+  position:relative;
+  padding:18px 14px;
+  border:1px solid var(--line);
+  border-radius:18px;
+  background:var(--surface);
+  box-shadow:var(--shadow-soft),var(--glow);
+  backdrop-filter:blur(14px) saturate(120%);
+  -webkit-backdrop-filter:blur(14px) saturate(120%);
+  text-align:center;
+  transition:transform .25s,box-shadow .25s;
+}
+.flow-node:hover{transform:translateY(-3px);box-shadow:var(--shadow),var(--glow)}
+.flow-node .index{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:26px;
+  height:26px;
+  margin-bottom:12px;
+  border-radius:9px;
+  background:var(--blue-soft);
+  color:var(--blue-deep);
+  font-family:var(--font-mono);
+  font-size:11px;
+  font-weight:700;
+}
+.flow-node h3{font-size:13.5px;font-weight:600}
+.flow-node p{margin-top:5px;color:var(--muted);font-size:11.5px;line-height:1.55}
+.flow-node.highlight{border-color:rgba(8,120,111,.3);background:var(--blue-soft)}
+.flow-node::after{
+  content:"→";
+  position:absolute;
+  right:-22px;
+  top:50%;
+  transform:translateY(-50%);
+  color:var(--muted);
+  font-family:var(--font-mono);
+  font-size:16px;
+}
+.flow-node:last-child::after{display:none}
+
+/* Stack */
+.stack{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  justify-content:center;
+}
+.stack-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 16px;
+  border:1px solid var(--line);
+  border-radius:999px;
+  background:var(--surface);
+  box-shadow:0 1px 0 rgba(255,255,255,.72) inset;
+  color:var(--text);
+  font-family:var(--font-mono);
+  font-size:12px;
+  font-weight:600;
+  transition:transform .2s,box-shadow .2s;
+}
+.stack-chip:hover{transform:translateY(-2px);box-shadow:var(--shadow-soft)}
+.stack-chip::before{content:"●";color:var(--blue);font-size:8px}
+
+/* Quickstart */
+.quickstart{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:22px;
+  align-items:stretch;
+}
+.quick-card{
+  padding:24px;
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  background:var(--surface);
+  box-shadow:var(--shadow-soft),var(--glow);
+  backdrop-filter:blur(16px) saturate(120%);
+  -webkit-backdrop-filter:blur(16px) saturate(120%);
+}
+.quick-card h3{font-family:var(--font-display);font-size:17px;font-weight:700}
+.quick-card p{margin-top:7px;color:var(--muted);font-size:13px;line-height:1.7}
+.quick-card code{
+  display:inline-block;
+  padding:3px 7px;
+  border-radius:7px;
+  background:rgba(8,120,111,.08);
+  color:var(--blue-deep);
+  font-family:var(--font-mono);
+  font-size:11.5px;
+}
+.security-notice{
+  display:flex;
+  gap:15px;
+  align-items:flex-start;
+  margin-top:22px;
+  padding:20px 22px;
+  border:1px solid rgba(184,83,46,.3);
+  border-radius:20px;
+  background:var(--orange-soft);
+  box-shadow:0 1px 0 rgba(255,255,255,.72) inset;
+}
+.security-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  width:42px;
+  height:42px;
+  border-radius:14px;
+  background:rgba(255,255,255,.62);
+  color:var(--orange);
+  box-shadow:0 1px 0 rgba(255,255,255,.8) inset;
+}
+.security-notice h3{
+  font-family:var(--font-display);
+  font-size:16px;
+  font-weight:700;
+  color:var(--orange);
+}
+.security-notice p{
+  margin-top:5px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.7;
+}
+.security-notice p + p{margin-top:8px}
+.security-notice code{
+  display:inline-block;
+  padding:2px 7px;
+  border-radius:7px;
+  background:rgba(255,255,255,.62);
+  color:var(--orange);
+  font-family:var(--font-mono);
+  font-size:11.5px;
+}
+.copy-wrap{
+  position:relative;
+  margin-top:18px;
+  border-radius:16px;
+  background:rgba(17,32,29,.92);
+  overflow:hidden;
+  box-shadow:0 14px 30px rgba(17,45,40,.18);
+}
+.copy-bar{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:10px 13px;
+  border-bottom:1px solid rgba(255,255,255,.08);
+  color:rgba(255,255,255,.42);
+  font-family:var(--font-mono);
+  font-size:10.5px;
+}
+.copy-btn{
+  padding:5px 10px;
+  border:1px solid rgba(255,255,255,.14);
+  border-radius:8px;
+  background:rgba(255,255,255,.06);
+  color:rgba(255,255,255,.72);
+  font-family:var(--font-mono);
+  font-size:10.5px;
+  cursor:pointer;
+  transition:background .2s,color .2s;
+}
+.copy-btn:hover{background:rgba(255,255,255,.14);color:#fff}
+.copy-btn.copied{background:rgba(127,224,174,.18);color:#7fe0ae}
+.copy-code{
+  padding:16px;
+  overflow-x:auto;
+  color:rgba(236,249,244,.9);
+  font-family:var(--font-mono);
+  font-size:12px;
+  line-height:1.8;
+  white-space:pre;
+}
+.copy-code .cmt{color:rgba(255,255,255,.42)}
+.copy-code .cmd{color:#8ee6dc}
+.copy-code .out{color:#7fe0ae}
+
+/* Credits */
+.credit-card{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  padding:20px 22px;
+  border:1px solid var(--line);
+  border-radius:22px;
+  background:var(--surface);
+  box-shadow:var(--shadow-soft),var(--glow);
+  backdrop-filter:blur(16px) saturate(120%);
+  -webkit-backdrop-filter:blur(16px) saturate(120%);
+  color:var(--text);
+  text-decoration:none;
+  transition:transform .25s,box-shadow .25s,border-color .25s;
+}
+.credit-card:hover{
+  transform:translateY(-3px);
+  border-color:var(--line-strong);
+  box-shadow:var(--shadow),var(--glow);
+}
+.credit-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  width:48px;
+  height:48px;
+  border-radius:15px;
+  background:var(--blue-soft);
+  color:var(--blue);
+  box-shadow:0 1px 0 rgba(255,255,255,.8) inset;
+}
+.credit-main{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  min-width:0;
+}
+.credit-main strong{
+  font-family:var(--font-display);
+  font-size:16px;
+  font-weight:700;
+}
+.credit-main small{
+  color:var(--muted);
+  font-size:12.5px;
+  line-height:1.6;
+}
+.credit-arrow{
+  flex:0 0 auto;
+  margin-left:auto;
+  color:var(--muted);
+  font-family:var(--font-mono);
+  font-size:18px;
+  transition:color .2s,transform .2s;
+}
+.credit-card:hover .credit-arrow{
+  color:var(--blue);
+  transform:translate(3px,-3px);
+}
+
+/* Thanks */
+.thanks-block{
+  margin-top:28px;
+  padding:24px;
+  border:1px solid var(--line);
+  border-radius:22px;
+  background:var(--surface-soft);
+  box-shadow:0 1px 0 rgba(255,255,255,.72) inset;
+}
+.thanks-block h3{
+  margin-top:8px;
+  font-family:var(--font-display);
+  font-size:20px;
+  font-weight:700;
+}
+.thanks-block p{
+  margin-top:6px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.7;
+}
+.thanks-list{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:12px;
+  margin-top:18px;
+}
+.thanks-chip{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  padding:16px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:var(--surface);
+  color:var(--text);
+  text-decoration:none;
+  box-shadow:0 1px 0 rgba(255,255,255,.7) inset;
+  transition:transform .22s,border-color .22s,box-shadow .22s;
+}
+.thanks-chip:hover{
+  transform:translateY(-2px);
+  border-color:var(--line-strong);
+  box-shadow:var(--shadow-soft);
+}
+.thanks-chip strong{
+  font-family:var(--font-display);
+  font-size:15px;
+  font-weight:700;
+}
+.thanks-chip small{
+  color:var(--muted);
+  font-size:11.5px;
+  line-height:1.55;
+}
+
+/* Footer */
+.footer{
+  margin-top:70px;
+  padding:34px 0 42px;
+  border-top:1px solid var(--line);
+}
+.footer-inner{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  flex-wrap:wrap;
+  color:var(--muted);
+  font-size:12.5px;
+}
+.footer-meta{font-family:var(--font-mono);font-size:11px}
+.footer-meta span{color:var(--blue)}
+.footer-links{display:flex;gap:16px}
+.footer-links a{color:var(--muted);text-decoration:none;transition:color .2s}
+.footer-links a:hover{color:var(--blue)}
+
+/* Reveal */
+.js .reveal{opacity:0;transform:translateY(22px);transition:opacity .7s cubic-bezier(.2,.75,.25,1),transform .7s cubic-bezier(.2,.75,.25,1)}
+.js .reveal.visible{opacity:1;transform:translateY(0)}
+.reveal-delay-1{transition-delay:.08s}
+.reveal-delay-2{transition-delay:.16s}
+.reveal-delay-3{transition-delay:.24s}
+
+@media (max-width:980px){
+  .hero{grid-template-columns:1fr;padding:64px 0 40px}
+  .terminal{max-width:640px}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .features{grid-template-columns:repeat(2,1fr)}
+  .advantages,.quickstart{grid-template-columns:1fr}
+  .flow{grid-template-columns:repeat(2,1fr)}
+  .flow-node::after{display:none}
+}
+@media (max-width:640px){
+  .container{width:min(100% - 28px, 1180px)}
+  .nav-wrap{width:min(100% - 28px, 1180px)}
+  .nav-links{display:none}
+  .features{grid-template-columns:1fr}
+  .stats{grid-template-columns:1fr 1fr}
+  .thanks-list{grid-template-columns:1fr}
+  .stat-value{font-size:28px}
+  .section{padding:42px 0 10px}
+  .hero h1{font-size:38px}
+  .hero-actions .btn{width:100%}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important;scroll-behavior:auto!important}
+}
+</style>
+</head>
+<body>
+<div class="bg-grid" aria-hidden="true"></div>
+
+<header class="nav-wrap">
+  <nav class="nav" aria-label="主导航">
+    <a class="brand" href="#top">
+      <svg class="brand-mark" viewBox="0 0 64 64" aria-hidden="true">
+        <defs>
+          <linearGradient id="lg" x1="0" y1="0" x2="64" y2="64">
+            <stop offset="0" stop-color="#0b8b80"/>
+            <stop offset="1" stop-color="#16835d"/>
+          </linearGradient>
+        </defs>
+        <rect width="64" height="64" rx="17" fill="url(#lg)"/>
+        <path d="M17 20h30v7H17zm0 17h30v7H17z" fill="#fff" opacity=".96"/>
+        <circle cx="47" cy="47" r="5" fill="#ffb07c"/>
+      </svg>
+      <span>
+        <span class="brand-name">EmbyTool</span>
+        <span class="brand-sub">media library workbench</span>
+      </span>
+    </a>
+    <ul class="nav-links">
+      <li><a href="#features">核心功能</a></li>
+      <li><a href="#advantages">为什么选它</a></li>
+      <li><a href="#architecture">工作流</a></li>
+      <li><a href="#quickstart">快速开始</a></li>
+      <li><a href="#credits">灵感</a></li>
+    </ul>
+    <a class="nav-cta" href="https://github.com/sisheng36/cover_generator" target="_blank" rel="noreferrer">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56v-2.17c-3.2.7-3.87-1.36-3.87-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.03 1.76 2.69 1.25 3.35.96.1-.75.4-1.25.72-1.54-2.55-.29-5.23-1.28-5.23-5.69 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.16 1.18a10.9 10.9 0 0 1 5.75 0c2.19-1.49 3.15-1.18 3.15-1.18.63 1.59.24 2.76.12 3.05.74.81 1.18 1.84 1.18 3.1 0 4.42-2.69 5.39-5.25 5.68.41.35.78 1.05.78 2.12v3.14c0 .31.21.67.8.55A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg>
+      GitHub
+    </a>
+  </nav>
+</header>
+
+<main id="top">
+  <section class="hero container">
+    <div class="hero-copy reveal visible">
+      <span class="eyebrow"><span class="eyebrow-dot"></span> self-hosted · webhook · automation</span>
+      <h1>让 Emby 媒体库<br><span class="gradient">自动好看，自动通知</span></h1>
+      <p class="hero-lead">EmbyTool 是一个用 Go 打造的媒体库工作台：自动生成美化封面、监听 Webhook 新入库事件、发送 Telegram 通知，并把入库情况整理成可视化的总览面板。</p>
+      <div class="hero-tags" aria-label="技术标签">
+        <span class="hero-tag">Go</span>
+        <span class="hero-tag">Emby API</span>
+        <span class="hero-tag">Webhook</span>
+        <span class="hero-tag">Telegram</span>
+        <span class="hero-tag">Docker</span>
+      </div>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="#quickstart">
+          快速开始
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+        <a class="btn btn-ghost" href="#features">探索功能</a>
+      </div>
+    </div>
+
+    <div class="terminal reveal visible reveal-delay-1" aria-label="EmbyTool 终端演示">
+      <div class="terminal-bar">
+        <span class="term-dot"></span>
+        <span class="term-dot"></span>
+        <span class="term-dot"></span>
+        <span class="terminal-title">embytool — zsh</span>
+      </div>
+      <div class="terminal-body" id="terminalBody" aria-live="polite"></div>
+    </div>
+  </section>
+
+  <section class="stats container" aria-label="核心数据">
+    <article class="stat-card reveal">
+      <strong class="stat-value" data-count="1">0</strong>
+      <span class="stat-label">Webhook 入口</span>
+      <span class="stat-detail">/webhook/emby</span>
+    </article>
+    <article class="stat-card reveal reveal-delay-1">
+      <strong class="stat-value" data-count="3">0</strong>
+      <span class="stat-label">自动化链路</span>
+      <span class="stat-detail">封面 · 通知 · 统计</span>
+    </article>
+    <article class="stat-card reveal reveal-delay-2">
+      <strong class="stat-value" data-count="30">0</strong>
+      <span class="stat-label">统计窗口</span>
+      <span class="stat-detail">days retention</span>
+    </article>
+    <article class="stat-card reveal reveal-delay-3">
+      <strong class="stat-value" data-count="32">0</strong>
+      <span class="stat-label">最近入库卡片</span>
+      <span class="stat-detail">poster wall</span>
+    </article>
+  </section>
+
+  <section id="features" class="section container">
+    <div class="section-head reveal">
+      <span class="section-kicker">core capabilities</span>
+      <h2>一个工具，打通入库后的整条链路</h2>
+      <p class="section-desc">从 Emby 新入库的那一刻开始，封面、通知和统计都由 EmbyTool 接管。</p>
+    </div>
+    <div class="features">
+      <article class="feature-card reveal">
+        <span class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M3 9h18M9 21V9"/></svg>
+        </span>
+        <h3>媒体库封面生成</h3>
+        <p>拉取媒体库海报，按单图、多图等风格自动合成统一封面；支持中英文自定义媒体库名称，保持整个媒体库视觉整齐。</p>
+        <div class="feature-tags">
+          <span class="feature-tag">多风格</span>
+          <span class="feature-tag">自定义标题</span>
+          <span class="feature-tag">手动上传</span>
+        </div>
+      </article>
+
+      <article class="feature-card reveal reveal-delay-1">
+        <span class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="18" r="3"/><circle cx="18" cy="6" r="3"/><path d="M8.8 7.6l6.4 8.8M15 9l-8 6"/></svg>
+        </span>
+        <h3>Webhook 新入库联动</h3>
+        <p>Emby 新电影或剧集入库后自动触发封面更新；同一媒体库短时间内的连续入库会自动合并窗口，避免重复刷新。</p>
+        <div class="feature-tags">
+          <span class="feature-tag">library.new</span>
+          <span class="feature-tag">窗口合并</span>
+          <span class="feature-tag">自动刷新</span>
+        </div>
+      </article>
+
+      <article class="feature-card reveal reveal-delay-2">
+        <span class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+        </span>
+        <h3>Telegram 入库通知</h3>
+        <p>新入库、播放、登录等事件即时推送到 Telegram；剧集连续入库自动聚合成一条消息，配合 TMDB 补全评分、类型和简介。</p>
+        <div class="feature-tags">
+          <span class="feature-tag">聚合消息</span>
+          <span class="feature-tag">TMDB</span>
+          <span class="feature-tag">多事件</span>
+        </div>
+      </article>
+
+      <article class="feature-card reveal">
+        <span class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-6 3 3 5-8"/></svg>
+        </span>
+        <h3>入库统计总览</h3>
+        <p>近 30 天每日入库柱状图、今日 / 近 7 天 / 峰值统计，以及最新 32 个媒体的海报墙，入库情况一目了然。</p>
+        <div class="feature-tags">
+          <span class="feature-tag">30 天窗口</span>
+          <span class="feature-tag">海报墙</span>
+          <span class="feature-tag">峰值统计</span>
+        </div>
+      </article>
+
+      <article class="feature-card reveal reveal-delay-1">
+        <span class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        </span>
+        <h3>定时任务</h3>
+        <p>按 Cron 表达式定时为选中的媒体库更新封面，也可以一键生成全部或部分媒体库，让封面始终与内容同步。</p>
+        <div class="feature-tags">
+          <span class="feature-tag">Cron</span>
+          <span class="feature-tag">手动生成</span>
+          <span class="feature-tag">全量刷新</span>
+        </div>
+      </article>
+
+      <article class="feature-card reveal reveal-delay-2">
+        <span class="feature-icon">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="3"/><path d="M8 20h8M12 16v4"/></svg>
+        </span>
+        <h3>自托管与数据自主</h3>
+        <p>Go 编写、Docker 一键部署，配置和统计数据都保存在本地 /data 目录，不依赖任何第三方服务，适合家庭媒体中心。</p>
+        <div class="feature-tags">
+          <span class="feature-tag">Go</span>
+          <span class="feature-tag">Docker</span>
+          <span class="feature-tag">本地持久化</span>
+        </div>
+      </article>
+    </div>
+
+    <aside class="security-notice reveal" role="note">
+      <span class="security-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5l8-3z"/><path d="M12 8v5"/><path d="M12 16.5v.5"/></svg>
+      </span>
+      <div>
+        <h3>安全提示</h3>
+        <p>部署完成后，请将 EmbyTool 的 <code>8055</code> 端口纳入防火墙，仅允许内网访问。控制台中保存了 Emby API Key，如果把端口暴露到公网，可能导致 Token 泄露并带来安全损失。</p>
+        <p>开发调试时如果希望保持端口可访问，也请确保只在局域网内访问，不要把端口映射或开放到公网。</p>
+      </div>
+    </aside>
+  </section>
+
+  <section id="advantages" class="section container">
+    <div class="section-head reveal">
+      <span class="section-kicker">why embytool</span>
+      <h2>为什么值得用 EmbyTool</h2>
+      <p class="section-desc">不是为了堆功能，而是把媒体库入库后最常做的事，做成一站式的自动化闭环。</p>
+    </div>
+    <div class="advantages">
+      <div class="advantage-list">
+        <article class="advantage-item reveal">
+          <span class="check">✓</span>
+          <div>
+            <h3>自动闭环，少一次手工操作</h3>
+            <p>新媒体入库 → 封面联动 → Telegram 通知 → 统计记录，全链路自动完成。</p>
+          </div>
+        </article>
+        <article class="advantage-item reveal reveal-delay-1">
+          <span class="check">✓</span>
+          <div>
+            <h3>通知不刷屏</h3>
+            <p>剧集多集连续入库会聚合成一条消息；同一媒体库联动刷新也有窗口期合并。</p>
+          </div>
+        </article>
+        <article class="advantage-item reveal reveal-delay-2">
+          <span class="check">✓</span>
+          <div>
+            <h3>轻量、可迁移</h3>
+            <p>Go 编译为原生二进制，空闲时内存占用明显低于 PHP 等传统服务端方案；配合 Docker Compose，配置与数据都在本地目录，随时备份和迁移。</p>
+          </div>
+        </article>
+        <article class="advantage-item reveal reveal-delay-3">
+          <span class="check">✓</span>
+          <div>
+            <h3>中文体验优先</h3>
+            <p>界面、通知文案和自定义媒体库名称都对中文友好，适合家庭媒体中心使用。</p>
+          </div>
+        </article>
+        <article class="advantage-item reveal reveal-delay-3">
+          <span class="check">✓</span>
+          <div>
+            <h3>灵活可控</h3>
+            <p>媒体库、封面风格、通知事件、统计窗口和定时策略都可以按自己的习惯配置。</p>
+          </div>
+        </article>
+      </div>
+
+      <div class="code-panel reveal reveal-delay-1" aria-label="EmbyTool 配置示例">
+        <div class="code-panel-head">
+          <span>settings → /data/config.json</span>
+          <span>local</span>
+        </div>
+        <pre><span class="c"># Emby 连接</span>
+<span class="k">emby_server_url</span>: <span class="s">"http://192.168.1.100:8096"</span>
+<span class="k">emby_api_key</span>:    <span class="s">"••••••••••••"</span>
+
+<span class="c"># 封面</span>
+<span class="k">covers_input</span>:  <span class="s">"/data/input"</span>
+<span class="k">covers_output</span>: <span class="s">"/data/covers_output"</span>
+
+<span class="c"># 自动化</span>
+<span class="k">scheduler_enabled</span>: <span class="ok">true</span>
+<span class="k">new_import_cover_enabled</span>: <span class="ok">true</span>
+<span class="k">notification_enabled</span>: <span class="ok">true</span>
+
+<span class="c"># 状态</span>
+<span class="k">status</span>: <span class="ok">ready ✓</span></pre>
+      </div>
+    </div>
+  </section>
+
+  <section id="architecture" class="section container">
+    <div class="section-head reveal">
+      <span class="section-kicker">event flow</span>
+      <h2>一条入库事件，如何跑完全流程</h2>
+      <p class="section-desc">Emby 只需要把 Webhook 指向 EmbyTool，剩下的事情交给自动化。</p>
+    </div>
+    <div class="flow">
+      <article class="flow-node reveal">
+        <span class="index">01</span>
+        <h3>Emby 新入库</h3>
+        <p>电影或剧集文件进入媒体库</p>
+      </article>
+      <article class="flow-node reveal reveal-delay-1">
+        <span class="index">02</span>
+        <h3>Webhook 推送</h3>
+        <p>事件发往 /webhook/emby</p>
+      </article>
+      <article class="flow-node highlight reveal reveal-delay-2">
+        <span class="index">03</span>
+        <h3>EmbyTool 解析</h3>
+        <p>识别媒体类型、剧集与服务器</p>
+      </article>
+      <article class="flow-node reveal reveal-delay-3">
+        <span class="index">04</span>
+        <h3>并行执行</h3>
+        <p>封面联动 + Telegram + 统计</p>
+      </article>
+      <article class="flow-node reveal reveal-delay-3">
+        <span class="index">05</span>
+        <h3>总览呈现</h3>
+        <p>入库数量与最近海报一目了然</p>
+      </article>
+    </div>
+
+    <div class="stack" style="margin-top:38px" aria-label="技术栈">
+      <span class="stack-chip">Go</span>
+      <span class="stack-chip">Emby API</span>
+      <span class="stack-chip">Webhook</span>
+      <span class="stack-chip">Telegram Bot API</span>
+      <span class="stack-chip">TMDB</span>
+      <span class="stack-chip">Docker Compose</span>
+      <span class="stack-chip">Vanilla JS</span>
+    </div>
+  </section>
+
+  <section id="quickstart" class="section container">
+    <div class="section-head reveal">
+      <span class="section-kicker">quick start</span>
+      <h2>从零到跑起来，只需要几步</h2>
+      <p class="section-desc">Docker Compose 一键启动，随后在 Emby 后台把 Webhook 指向 EmbyTool 即可。</p>
+    </div>
+    <div class="quickstart">
+      <article class="quick-card reveal">
+        <h3>1 · 启动服务</h3>
+        <p>使用 <code>docker compose up -d</code> 启动后，打开 <code>http://localhost:8055</code> 即可进入控制台。</p>
+        <div class="copy-wrap">
+          <div class="copy-bar">
+            <span>deploy.sh</span>
+            <button class="copy-btn" type="button" data-copy-target="deployCode">复制</button>
+          </div>
+          <div class="copy-code" id="deployCode"><span class="cmt"># 启动 EmbyTool</span>
+<span class="cmd">$ docker compose up -d</span>
+<span class="out">[✓] EmbyTool is running on :8055</span>
+
+<span class="cmt"># 打开工作台</span>
+<span class="cmd">$ open http://localhost:8055</span></div>
+        </div>
+      </article>
+      <article class="quick-card reveal reveal-delay-1">
+        <h3>2 · 接入 Emby Webhook</h3>
+        <p>在 Emby 的 Webhook 插件中新增通知地址，事件选择新媒体入库即可开始联动。</p>
+        <div class="copy-wrap">
+          <div class="copy-bar">
+            <span>webhook</span>
+            <button class="copy-btn" type="button" data-copy-target="webhookCode">复制</button>
+          </div>
+          <div class="copy-code" id="webhookCode"><span class="cmt"># Emby Webhook 地址</span>
+<span class="cmd">$ POST /webhook/emby</span>
+
+<span class="out">"event": "ItemAdded"</span>
+<span class="out">"item.type": "Movie / Episode"</span>
+<span class="out">→ 封面 · 通知 · 统计</span></div>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="credits" class="section container">
+    <div class="section-head reveal">
+      <span class="section-kicker">credits / inspired by</span>
+      <h2>灵感与借鉴</h2>
+      <p class="section-desc">本项目的封面生成与入库监控设计，借鉴了以下开源项目，在此致谢。</p>
+    </div>
+    <a class="credit-card reveal" href="https://github.com/justzerock/MoviePilot-Plugins" target="_blank" rel="noreferrer" aria-label="查看借鉴项目 Yahaha Cover Studio">
+      <span class="credit-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      </span>
+      <span class="credit-main">
+        <strong>Yahaha Cover Studio</strong>
+        <small>justzerock/MoviePilot-Plugins · 为 Emby / Jellyfin 媒体库生成静态与动态封面的开源封面工具</small>
+      </span>
+      <span class="credit-arrow" aria-hidden="true">↗</span>
+    </a>
+
+    <div class="thanks-block reveal reveal-delay-1">
+      <span class="section-kicker">thanks</span>
+      <h3>致谢</h3>
+      <p>EmbyTool 的自动化能力离不开这些优秀的产品与开放生态，衷心感谢。</p>
+      <div class="thanks-list">
+        <a class="thanks-chip" href="https://emby.media" target="_blank" rel="noreferrer">
+          <strong>Emby</strong>
+          <small>媒体库管理与 API 支持</small>
+        </a>
+        <a class="thanks-chip" href="https://telegram.org" target="_blank" rel="noreferrer">
+          <strong>Telegram</strong>
+          <small>稳定可靠的通知通道</small>
+        </a>
+        <a class="thanks-chip" href="https://www.themoviedb.org" target="_blank" rel="noreferrer">
+          <strong>TMDB</strong>
+          <small>电影剧集元数据与海报来源</small>
+        </a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <div class="footer-meta">EmbyTool · <span>media library workbench</span> · self-hosted</div>
+    <div class="footer-links">
+      <a href="#top">返回顶部</a>
+      <a href="https://github.com/justzerock/MoviePilot-Plugins" target="_blank" rel="noreferrer">借鉴项目</a>
+      <a href="https://github.com/sisheng36/cover_generator" target="_blank" rel="noreferrer">GitHub</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+const terminalLines = [
+  {text:'$ embytool', html:'<span class="dim">$</span> <span class="blue">embytool</span>'},
+  {text:'[system] 已启动 · listening on :8055', html:'<span class="dim">[system]</span> <span class="green">已启动</span> <span class="dim">· listening on :8055</span>'},
+  {text:'[webhook] 收到 library.new → 电影《流浪地球 3》', html:'<span class="dim">[webhook]</span> <span class="green">收到</span> <span class="blue">library.new</span> <span class="dim">→ 电影《流浪地球 3》</span>'},
+  {text:'[cover] 已更新媒体库封面 · style=single_2', html:'<span class="dim">[cover]</span> <span class="green">已更新媒体库封面</span> <span class="dim">· style=single_2</span>'},
+  {text:'[notify] Telegram 通知已发送 · 1 recipient', html:'<span class="dim">[notify]</span> <span class="green">Telegram 通知已发送</span> <span class="dim">· 1 recipient</span>'},
+  {text:'[stats] 今日入库 +1 · 30d total 128', html:'<span class="dim">[stats]</span> <span class="green">今日入库 +1</span> <span class="dim">· 30d total 128</span>'},
+  {text:'[scheduler] next run · 03:00 Asia/Shanghai', html:'<span class="dim">[scheduler]</span> <span class="orange">next run</span> <span class="dim">· 03:00 Asia/Shanghai</span>'}
+];
+const terminalBody = document.getElementById('terminalBody');
+let lineIndex = 0;
+let charIndex = 0;
+
+function escapeTerminal(value){
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function typeTerminal(){
+  if(!terminalBody)return;
+  if(lineIndex >= terminalLines.length){
+    terminalBody.insertAdjacentHTML('beforeend', '<div class="term-line"><span class="dim">$</span> <span class="term-cursor"></span></div>');
+    return;
+  }
+  const line = terminalLines[lineIndex];
+  charIndex += 1;
+  const partial = escapeTerminal(line.text.slice(0, charIndex));
+  let current = terminalBody.querySelector('.term-line:last-child');
+  if(!current || current.dataset.done === 'true'){
+    current = document.createElement('div');
+    current.className = 'term-line';
+    current.dataset.done = 'false';
+    terminalBody.appendChild(current);
+  }
+  current.innerHTML = partial + '<span class="term-cursor"></span>';
+  if(charIndex >= line.text.length){
+    current.innerHTML = line.html + '<span class="term-cursor"></span>';
+    current.dataset.done = 'true';
+    lineIndex += 1;
+    charIndex = 0;
+    setTimeout(typeTerminal, 260);
+  }else{
+    setTimeout(typeTerminal, 13);
+  }
+}
+
+if(terminalBody){
+  terminalBody.innerHTML = '';
+  setTimeout(typeTerminal, 350);
+}
+
+const revealObserver = new IntersectionObserver(entries=>{
+  entries.forEach(entry=>{
+    if(entry.isIntersecting){
+      entry.target.classList.add('visible');
+      revealObserver.unobserve(entry.target);
+    }
+  });
+}, {threshold:.12, rootMargin:'0px 0px -40px 0px'});
+document.querySelectorAll('.reveal').forEach(el=>revealObserver.observe(el));
+
+let countersStarted = false;
+function animateCounters(){
+  const cards = document.querySelectorAll('.stat-card .stat-value');
+  if(!cards.length || countersStarted)return;
+  countersStarted = true;
+  cards.forEach(card=>{
+    const target = Number(card.dataset.count || 0);
+    const duration = 900;
+    const start = performance.now();
+    function tick(now){
+      const progress = Math.min((now - start) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      card.textContent = String(Math.round(target * eased));
+      if(progress < 1)requestAnimationFrame(tick);
+      else card.textContent = String(target);
+    }
+    requestAnimationFrame(tick);
+  });
+}
+const statsSection = document.querySelector('.stats');
+if(statsSection){
+  new IntersectionObserver((entries, observer)=>{
+    entries.forEach(entry=>{
+      if(entry.isIntersecting){
+        animateCounters();
+        observer.disconnect();
+      }
+    });
+  }, {threshold:.35}).observe(statsSection);
+}
+
+document.querySelectorAll('.copy-btn').forEach(button=>{
+  button.addEventListener('click', async ()=>{
+    const target = document.getElementById(button.dataset.copyTarget);
+    if(!target)return;
+    const text = target.textContent.replace(/^\$ /gm, '').trim();
+    try{
+      await navigator.clipboard.writeText(text);
+      button.textContent = '已复制 ✓';
+      button.classList.add('copied');
+      setTimeout(()=>{
+        button.textContent = '复制';
+        button.classList.remove('copied');
+      }, 1800);
+    }catch(error){
+      button.textContent = '复制失败';
+    }
+  });
+});
+</script>
+</body>
+</html>
