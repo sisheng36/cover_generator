@@ -33,6 +33,7 @@
   --glow:0 0 0 1px rgba(255,255,255,.28) inset;
   --radius:24px;
   --radius-sm:16px;
+  --bing-wallpaper:none;
   --font-display:"Outfit","PingFang SC","Microsoft YaHei",sans-serif;
   --font-body:"Plus Jakarta Sans","PingFang SC","Microsoft YaHei",sans-serif;
   --font-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
@@ -51,13 +52,23 @@ body::before{
   content:"";
   position:fixed;
   inset:0;
+  z-index:-3;
+  pointer-events:none;
+  background:var(--bing-wallpaper, none) center / cover no-repeat;
+  opacity:.46;
+  filter:saturate(.96) contrast(1.02);
+}
+body::after{
+  content:"";
+  position:fixed;
+  inset:0;
   z-index:-2;
   pointer-events:none;
   background:
     radial-gradient(900px 480px at 12% -8%, rgba(8,120,111,.18), transparent 62%),
     radial-gradient(820px 460px at 92% 8%, rgba(22,131,93,.14), transparent 60%),
     radial-gradient(760px 560px at 50% 110%, rgba(184,83,46,.09), transparent 58%),
-    linear-gradient(160deg, #eaf2ef 0%, #d9e7e4 48%, #d4e3e0 100%);
+    linear-gradient(160deg, rgba(234,242,239,.78) 0%, rgba(217,231,228,.84) 48%, rgba(212,227,224,.9) 100%);
 }
 .bg-grid{
   position:fixed;
@@ -1519,6 +1530,138 @@ document.querySelectorAll('.copy-btn').forEach(button=>{
     }
   });
 });
+
+// ========== Bing 每日壁纸 ==========
+const BING_WALLPAPER = {
+  cacheKey: 'cover-generator-bing-wallpaper',
+  api: 'https://www.bing.com/HPImageArchive.aspx?format=js&idx=0&n=1&mkt=zh-CN',
+  proxies: [
+    (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+    (url) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+    (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+    (url) => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+  ],
+};
+
+function bingTodayKey(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+function bingApplyWallpaper(value){
+  document.documentElement.style.setProperty('--bing-wallpaper', value);
+}
+
+function bingReadCache(){
+  try{
+    const raw = localStorage.getItem(BING_WALLPAPER.cacheKey);
+    if(!raw)return null;
+    const data = JSON.parse(raw);
+    if(data && typeof data.url === 'string' && data.url)return data;
+  }catch(error){ /* ignore */ }
+  return null;
+}
+
+function bingWriteCache(entry){
+  try{
+    localStorage.setItem(BING_WALLPAPER.cacheKey, JSON.stringify(entry));
+  }catch(error){ /* quota */ }
+}
+
+function bingProbeImage(url){
+  return new Promise((resolve) => {
+    const img = new Image();
+    let done = false;
+    const finish = (ok) => {
+      if(done)return;
+      done = true;
+      resolve(ok);
+    };
+    img.onload = () => finish(true);
+    img.onerror = () => finish(false);
+    setTimeout(() => finish(false), 6000);
+    img.src = url;
+  });
+}
+
+async function bingFetchWithTimeout(url, timeout = 10000){
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeout);
+  try{
+    return await fetch(url, { cache: 'no-store', signal: controller.signal });
+  }finally{
+    clearTimeout(timer);
+  }
+}
+
+function bingParsePayload(data){
+  const images = data && data.images;
+  if(images && images[0] && images[0].url){
+    return { url: images[0].url, copyright: images[0].copyright || '' };
+  }
+  if(data && typeof data.contents === 'string'){
+    try{
+      const inner = JSON.parse(data.contents);
+      const img = inner && inner.images && inner.images[0];
+      if(img && img.url)return { url: img.url, copyright: img.copyright || '' };
+    }catch(error){ /* ignore */ }
+  }
+  return null;
+}
+
+async function bingFetchToday(){
+  let lastErr = null;
+  for(const proxify of BING_WALLPAPER.proxies){
+    const proxyUrl = proxify(BING_WALLPAPER.api);
+    try{
+      const response = await bingFetchWithTimeout(proxyUrl);
+      if(!response.ok){
+        lastErr = `HTTP ${response.status}`;
+        continue;
+      }
+      const data = await response.json();
+      const parsed = bingParsePayload(data);
+      if(!parsed){
+        lastErr = 'no image in response';
+        continue;
+      }
+      const fullUrl = `https://www.bing.com${parsed.url}`;
+      const ok = await bingProbeImage(fullUrl);
+      if(!ok){
+        lastErr = 'image probe failed';
+        continue;
+      }
+      return { date: bingTodayKey(), url: fullUrl, copyright: parsed.copyright };
+    }catch(error){
+      lastErr = error;
+    }
+  }
+  console.warn('[bing-wallpaper] all proxies failed, keeping gradient fallback:', lastErr);
+  return null;
+}
+
+async function initBingWallpaper(){
+  const cached = bingReadCache();
+  if(cached){
+    const ok = await bingProbeImage(cached.url);
+    if(ok){
+      bingApplyWallpaper(`url("${cached.url}")`);
+      if(cached.date === bingTodayKey())return;
+    }
+  }
+  const fresh = await bingFetchToday();
+  if(fresh){
+    bingApplyWallpaper(`url("${fresh.url}")`);
+    bingWriteCache(fresh);
+    return;
+  }
+  if(cached){
+    const ok = await bingProbeImage(cached.url);
+    if(ok)bingApplyWallpaper(`url("${cached.url}")`);
+  }
+}
+
+initBingWallpaper();
 </script>
 </body>
 </html>
