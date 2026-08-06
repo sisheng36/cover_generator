@@ -185,6 +185,41 @@ func TestImportStatsStoreRecentImportsMoveExistingMediaToFront(t *testing.T) {
 	}
 }
 
+func TestImportStatsStoreRemoveRecentPersists(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "import_stats.json")
+	entry := recentImport{
+		Key:    "MOV\x00movie-1",
+		ItemID: "movie-1",
+		Name:   "电影一",
+		Type:   "MOV",
+	}
+	store := &importStatsStore{
+		path:   path,
+		days:   map[string]int{},
+		seen:   map[string]string{},
+		recent: []recentImport{entry},
+	}
+
+	removed, err := store.RemoveRecent(entry.Key)
+	if err != nil {
+		t.Fatalf("RemoveRecent() error = %v", err)
+	}
+	if !removed {
+		t.Fatal("RemoveRecent() removed = false, want true")
+	}
+	if len(store.recent) != 0 {
+		t.Fatalf("recent after remove = %+v, want empty", store.recent)
+	}
+
+	reloaded, err := newImportStatsStore(path)
+	if err != nil {
+		t.Fatalf("newImportStatsStore() error = %v", err)
+	}
+	if _, ok := reloaded.recentImport(entry.Key); ok {
+		t.Fatal("recentImport() found removed entry after reload")
+	}
+}
+
 func TestRecentImportPosterPathFallsBackToLatestEpisode(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
@@ -205,14 +240,76 @@ func TestRecentImportPosterPathFallsBackToLatestEpisode(t *testing.T) {
 	}))
 	defer server.Close()
 
-	path := recentImportPosterPath(context.Background(), emby.New(server.URL, "api-key"), recentImport{
+	path, missing, transient := recentImportPosterPath(context.Background(), emby.New(server.URL, "api-key"), recentImport{
 		ItemID:         "series-name",
 		FallbackItemID: "episode-2",
 		Type:           "TV",
 	})
 	want := "/emby/Items/series-1/Images/Primary?tag=series-poster&maxWidth=320&maxHeight=480&quality=90"
+	if missing {
+		t.Fatal("recentImportPosterPath() missing = true, want false for existing fallback")
+	}
+	if transient {
+		t.Fatal("recentImportPosterPath() transient = true, want false for existing fallback")
+	}
 	if path != want {
 		t.Fatalf("recentImportPosterPath() = %q, want %q", path, want)
+	}
+}
+
+func TestRecentImportPosterPathDetectsDeletedItem(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/Users":
+			writeJSON(w, http.StatusOK, []map[string]any{{"Id": "test-user"}})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	path, missing, transient := recentImportPosterPath(context.Background(), emby.New(server.URL, "api-key"), recentImport{
+		ItemID:         "series-1",
+		FallbackItemID: "episode-1",
+		Type:           "TV",
+	})
+	if path != "" {
+		t.Fatalf("recentImportPosterPath() path = %q, want empty for deleted item", path)
+	}
+	if !missing {
+		t.Fatal("recentImportPosterPath() missing = false, want true for deleted item")
+	}
+	if transient {
+		t.Fatal("recentImportPosterPath() transient = true, want false for deleted item")
+	}
+}
+
+func TestRecentImportPosterPathKeepsEntryOnTransientError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/Users":
+			writeJSON(w, http.StatusOK, []map[string]any{{"Id": "test-user"}})
+		case "/Users/test-user/Items/series-1":
+			http.Error(w, "emby unavailable", http.StatusBadGateway)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	path, missing, transient := recentImportPosterPath(context.Background(), emby.New(server.URL, "api-key"), recentImport{
+		ItemID:         "series-1",
+		FallbackItemID: "episode-1",
+		Type:           "TV",
+	})
+	if path != "" {
+		t.Fatalf("recentImportPosterPath() path = %q, want empty on transient error", path)
+	}
+	if missing {
+		t.Fatal("recentImportPosterPath() missing = true, want false on transient error")
+	}
+	if !transient {
+		t.Fatal("recentImportPosterPath() transient = false, want true on transient error")
 	}
 }
 
@@ -279,6 +376,132 @@ func TestHandleRecentImportPosterProxiesPrimaryImage(t *testing.T) {
 	}
 	if response.Body.String() != posterBody {
 		t.Fatalf("poster body = %q, want %q", response.Body.String(), posterBody)
+	}
+}
+
+func TestHandleRecentImportPosterRemovesDeletedEntryAndReturnsGone(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/Users":
+			writeJSON(w, http.StatusOK, []map[string]any{{"Id": "test-user"}})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	entry := recentImport{
+		Key:    "MOV\x00movie-1",
+		ItemID: "movie-1",
+		Name:   "电影一",
+		Type:   "MOV",
+	}
+	s := &Server{
+		cfg: config.Config{
+			EmbyServerURL: server.URL,
+			EmbyAPIKey:    "api-key",
+		},
+		importStats: &importStatsStore{
+			path:   filepath.Join(t.TempDir(), "import_stats.json"),
+			days:   map[string]int{},
+			seen:   map[string]string{},
+			recent: []recentImport{entry},
+		},
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/recent-imports/poster?id="+url.QueryEscape(entry.Key), nil)
+	response := httptest.NewRecorder()
+	s.handleRecentImportPoster(response, req)
+
+	if response.Code != http.StatusGone {
+		t.Fatalf("poster response status = %d, want %d", response.Code, http.StatusGone)
+	}
+	if len(s.importStats.recent) != 0 {
+		t.Fatalf("recent entries after deletion = %+v, want empty", s.importStats.recent)
+	}
+}
+
+func TestHandleRecentImportPosterKeepsEntryWhenEmbyUnavailable(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/Users":
+			writeJSON(w, http.StatusOK, []map[string]any{{"Id": "test-user"}})
+		default:
+			http.Error(w, "emby unavailable", http.StatusBadGateway)
+		}
+	}))
+	defer server.Close()
+
+	entry := recentImport{
+		Key:    "MOV\x00movie-1",
+		ItemID: "movie-1",
+		Name:   "电影一",
+		Type:   "MOV",
+	}
+	s := &Server{
+		cfg: config.Config{
+			EmbyServerURL: server.URL,
+			EmbyAPIKey:    "api-key",
+		},
+		importStats: &importStatsStore{
+			days:   map[string]int{},
+			seen:   map[string]string{},
+			recent: []recentImport{entry},
+		},
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/recent-imports/poster?id="+url.QueryEscape(entry.Key), nil)
+	response := httptest.NewRecorder()
+	s.handleRecentImportPoster(response, req)
+
+	if response.Code != http.StatusBadGateway {
+		t.Fatalf("poster response status = %d, want %d", response.Code, http.StatusBadGateway)
+	}
+	if len(s.importStats.recent) != 1 {
+		t.Fatalf("recent entries on transient error = %d, want 1", len(s.importStats.recent))
+	}
+}
+
+func TestHandleRecentImportPosterKeepsEntryWhenItemHasNoPoster(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/Users":
+			writeJSON(w, http.StatusOK, []map[string]any{{"Id": "test-user"}})
+		case "/Users/test-user/Items/movie-1":
+			writeJSON(w, http.StatusOK, map[string]any{"Id": "movie-1", "Type": "Movie"})
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	entry := recentImport{
+		Key:    "MOV\x00movie-1",
+		ItemID: "movie-1",
+		Name:   "电影一",
+		Type:   "MOV",
+	}
+	s := &Server{
+		cfg: config.Config{
+			EmbyServerURL: server.URL,
+			EmbyAPIKey:    "api-key",
+		},
+		importStats: &importStatsStore{
+			days:   map[string]int{},
+			seen:   map[string]string{},
+			recent: []recentImport{entry},
+		},
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/recent-imports/poster?id="+url.QueryEscape(entry.Key), nil)
+	response := httptest.NewRecorder()
+	s.handleRecentImportPoster(response, req)
+
+	if response.Code != http.StatusNotFound {
+		t.Fatalf("poster response status = %d, want %d", response.Code, http.StatusNotFound)
+	}
+	if len(s.importStats.recent) != 1 {
+		t.Fatalf("recent entries without poster = %d, want 1", len(s.importStats.recent))
 	}
 }
 

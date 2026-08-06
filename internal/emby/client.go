@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"image"
 	"image/color"
@@ -28,6 +29,9 @@ import (
 )
 
 const itemFields = "Id,Name,Type,Path,ParentId,ProviderIds,ImageTags,BackdropImageTags,PrimaryImageTag,PrimaryImageItemId,ParentBackdropImageTags,ParentBackdropItemId,SeriesPrimaryImageTag,SeriesId,SeriesName,ProductionYear,Overview,ChildCount,RecursiveItemCount"
+
+// ErrNotFound 表示 Emby 返回了 404/410，通常意味着条目已被删除或不存在。
+var ErrNotFound = errors.New("emby item not found")
 
 type Client struct {
 	baseURL string
@@ -83,6 +87,9 @@ func (c *Client) getJSON(ctx context.Context, path string, params url.Values, ou
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusGone {
+			return fmt.Errorf("%w: emby GET %s -> %s", ErrNotFound, path, resp.Status)
+		}
 		return fmt.Errorf("emby GET %s -> %s", path, resp.Status)
 	}
 
@@ -336,7 +343,7 @@ func (c *Client) GetItem(ctx context.Context, itemID string) (map[string]any, er
 	path := "/Users/" + url.PathEscape(userID) + "/Items/" + url.PathEscape(itemID)
 	if err := c.getJSON(ctx, path, params, &item); err != nil {
 		log.Printf("Emby GET %s 失败: %v", path, err)
-		return nil, nil
+		return nil, err
 	}
 	return item, nil
 }

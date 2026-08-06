@@ -677,6 +677,8 @@ const state = {
   overviewLoading: false,
   overviewData: null,
   overviewRange: 30,
+  overviewRefreshPending: false,
+  removedRecentIDs: new Set(),
 };
 
 let autoCoverStatusTimer = null;
@@ -840,7 +842,7 @@ function renderRecentImportWall(items){
     id: String(item?.id || ''),
     name: String(item?.name || ''),
     type: String(item?.type || ''),
-  })).filter(item=>item.id) : [];
+  })).filter(item=>item.id && !state.removedRecentIDs.has(item.id)) : [];
 
   if(!recentItems.length){
     wall.innerHTML = '<div class="overview-poster-empty">暂无最近入库海报</div>';
@@ -854,11 +856,41 @@ function renderRecentImportWall(items){
     const posterURL = `/api/recent-imports/poster?id=${encodeURIComponent(item.id)}`;
     return `
       <article class="overview-poster" role="listitem" title="${escapeHtmlAttr(label)}" aria-label="${escapeHtmlAttr(label)}">
-        <img src="${escapeHtmlAttr(posterURL)}" alt="${escapeHtmlAttr(name)}" loading="lazy" decoding="async" onerror="this.parentElement.classList.add('is-unavailable');this.remove()">
+        <img src="${escapeHtmlAttr(posterURL)}" alt="${escapeHtmlAttr(name)}" loading="lazy" decoding="async" data-poster-id="${escapeHtmlAttr(item.id)}" onerror="handleRecentPosterError(this)">
         <span class="overview-poster-fallback">${escapeHtml(name)}</span>
       </article>
     `;
   }).join('');
+}
+
+function handleRecentPosterError(img){
+  const article = img.closest('.overview-poster');
+  if(!article)return;
+  const id = article.dataset.posterId || '';
+  if(!id){
+    article.classList.add('is-unavailable');
+    img.remove();
+    return;
+  }
+  fetch(`/api/recent-imports/poster?id=${encodeURIComponent(id)}`, {method:'HEAD'})
+    .then(response=>{
+      if(response.status === 410){
+        state.removedRecentIDs.add(id);
+        article.remove();
+        const wall = document.getElementById('overviewRecentWall');
+        if(wall && !wall.querySelector('.overview-poster')){
+          wall.innerHTML = '<div class="overview-poster-empty">暂无最近入库海报</div>';
+        }
+        loadOverview(true);
+        return;
+      }
+      article.classList.add('is-unavailable');
+      img.remove();
+    })
+    .catch(()=>{
+      article.classList.add('is-unavailable');
+      img.remove();
+    });
 }
 
 function renderOverview(data){
@@ -932,7 +964,10 @@ function renderOverviewError(message){
 }
 
 async function loadOverview(silent=false){
-  if(state.overviewLoading)return;
+  if(state.overviewLoading){
+    if(silent)state.overviewRefreshPending = true;
+    return;
+  }
   state.overviewLoading = true;
   const refreshButton = document.getElementById('overviewRefresh');
   if(refreshButton)refreshButton.disabled = true;
@@ -947,6 +982,10 @@ async function loadOverview(silent=false){
     if(!silent)showToast(`读取入库统计失败: ${error.message}`, 'error');
   }finally{
     state.overviewLoading = false;
+    if(state.overviewRefreshPending){
+      state.overviewRefreshPending = false;
+      loadOverview(true);
+    }
     if(refreshButton)refreshButton.disabled = false;
   }
 }

@@ -216,6 +216,29 @@ func (s *importStatsStore) recentImport(key string) (recentImport, bool) {
 	return recentImport{}, false
 }
 
+func (s *importStatsStore) RemoveRecent(key string) (bool, error) {
+	key = strings.TrimSpace(key)
+	if key == "" {
+		return false, nil
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i, item := range s.recent {
+		if item.Key != key {
+			continue
+		}
+		previousRecent := append([]recentImport(nil), s.recent...)
+		s.recent = append(append([]recentImport(nil), s.recent[:i]...), s.recent[i+1:]...)
+		if err := s.saveLocked(); err != nil {
+			s.recent = previousRecent
+			return false, err
+		}
+		return true, nil
+	}
+	return false, nil
+}
+
 func (s *importStatsStore) pruneLocked(now time.Time) {
 	dayStart := startOfImportDay(now)
 	daysCutoff := importDayKey(dayStart.AddDate(0, 0, -(overviewWindowDays - 1)))

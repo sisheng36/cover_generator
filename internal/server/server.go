@@ -329,7 +329,18 @@ func (s *Server) handleRecentImportPoster(w http.ResponseWriter, r *http.Request
 	}
 
 	client := emby.NewWithUserID(cfg.EmbyServerURL, cfg.EmbyAPIKey, cfg.EmbyUserID)
-	imagePath := recentImportPosterPath(r.Context(), client, item)
+	imagePath, missing, transient := recentImportPosterPath(r.Context(), client, item)
+	if missing {
+		if _, err := s.importStats.RemoveRecent(item.Key); err != nil {
+			log.Printf("清理已删除的最近入库记录失败: %v", err)
+		}
+		http.Error(w, "媒体已删除", http.StatusGone)
+		return
+	}
+	if transient {
+		http.Error(w, "读取海报失败", http.StatusBadGateway)
+		return
+	}
 	if imagePath == "" {
 		http.NotFound(w, r)
 		return
@@ -360,21 +371,29 @@ func (s *Server) handleRecentImportPoster(w http.ResponseWriter, r *http.Request
 	}
 }
 
-func recentImportPosterPath(ctx context.Context, client *emby.Client, entry recentImport) string {
+func recentImportPosterPath(ctx context.Context, client *emby.Client, entry recentImport) (string, bool, bool) {
 	itemIDs := []string{entry.ItemID}
 	if entry.FallbackItemID != "" && entry.FallbackItemID != entry.ItemID {
 		itemIDs = append(itemIDs, entry.FallbackItemID)
 	}
+	confirmedMissing := true
 	for _, itemID := range itemIDs {
 		item, err := client.GetItem(ctx, itemID)
-		if err != nil || len(item) == 0 {
-			continue
+		if err != nil {
+			if errors.Is(err, emby.ErrNotFound) {
+				continue
+			}
+			return "", false, true
 		}
+		if len(item) == 0 {
+			return "", false, true
+		}
+		confirmedMissing = false
 		if imagePath := client.GetImageURL(item, true); imagePath != "" {
-			return imagePath + "&maxWidth=320&maxHeight=480&quality=90"
+			return imagePath + "&maxWidth=320&maxHeight=480&quality=90", false, false
 		}
 	}
-	return ""
+	return "", confirmedMissing, false
 }
 
 func (s *Server) handleConfig(w http.ResponseWriter, r *http.Request) {

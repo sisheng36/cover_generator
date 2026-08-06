@@ -3,6 +3,7 @@ package emby
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -68,5 +69,27 @@ func TestGetItemDiscoversUserIDWhenNotConfigured(t *testing.T) {
 	}
 	if item == nil || item["Id"] != "item-1" {
 		t.Fatalf("GetItem() = %#v, want item-1", item)
+	}
+}
+
+func TestGetItemReturnsErrNotFoundForDeletedItem(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/Users":
+			_ = json.NewEncoder(w).Encode([]map[string]any{{"Id": "test-user"}})
+		case "/Users/test-user/Items/movie-1":
+			http.NotFound(w, r)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	item, err := New(server.URL, "api-key").GetItem(context.Background(), "movie-1")
+	if !errors.Is(err, ErrNotFound) {
+		t.Fatalf("GetItem() error = %v, want ErrNotFound", err)
+	}
+	if item != nil {
+		t.Fatalf("GetItem() = %#v, want nil for missing item", item)
 	}
 }
