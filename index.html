@@ -719,11 +719,27 @@ body::after{
   font-family:var(--font-mono);
   font-size:11px;
 }
+.notify-photo{
+  width:100%;
+  aspect-ratio:16/9;
+  object-fit:cover;
+  border-radius:10px;
+  margin-bottom:10px;
+  display:block;
+  background:var(--surface-subtle);
+  border:1px solid rgba(255,255,255,.08);
+}
 .notify-body strong{
   display:block;
   margin:2px 0;
   color:#fff;
   font-size:14px;
+}
+.showcase-note{
+  margin-top:14px;
+  color:var(--muted);
+  font-size:12px;
+  text-align:center;
 }
 .notify-meta{
   display:flex;
@@ -1337,13 +1353,12 @@ body::after{
           </div>
         </div>
         <div class="notify-body">
-          <span class="label">📺 剧集入库</span>
-          <strong>柯蒂斯总统 (2026)</strong>
-          <div>S01E01 · 剧情 · 2026</div>
-          <div class="notify-meta">
-            <span class="notify-tag">TMDB</span>
-            <span class="notify-tag">聚合消息</span>
-          </div>
+          <img class="notify-photo" src="https://image.tmdb.org/t/p/original/yoTP91XZZjSvE2gZgGvwNxVW96w.jpg" alt="柯蒂斯总统 (2026) 背景图" loading="lazy">
+          <strong>📺 柯蒂斯总统 (2026) ✨ 入库成功</strong>
+          <div>🎞️ 集数: S01E01</div>
+          <div class="notify-time">⏰ 时间: ---- --:--:--</div>
+          <div>⭐ TMDB评分: 5.3/10 (21人评分)</div>
+          <div>📝 剧情: 柯蒂斯总统及其古怪的幕僚团队将共同应对那些瑞克根本不会理会的一系列危机——从跨维度外交到超自然现象调查，再到无法解释的异常事件。</div>
         </div>
       </article>
 
@@ -1358,16 +1373,15 @@ body::after{
           </div>
         </div>
         <div class="notify-body">
-          <span class="label">🎬 电影入库</span>
-          <strong>寒战1994 (2026)</strong>
-          <div>动作 / 犯罪 · 2026</div>
-          <div class="notify-meta">
-            <span class="notify-tag">TMDB</span>
-            <span class="notify-tag">评分补全</span>
-          </div>
+          <img class="notify-photo" src="https://image.tmdb.org/t/p/original/92W00NvclecWWsXDjCwr5f23KSk.jpg" alt="寒战1994 (2026) 背景图" loading="lazy">
+          <strong>🎬 寒战1994 (2026) ✨ 入库成功</strong>
+          <div class="notify-time">⏰ 时间: ---- --:--:--</div>
+          <div>⭐ TMDB评分: 6.3/10 (16人评分)</div>
+          <div>📝 剧情: 1994年，香港一宗富豪绑架案，掀起各界暗涌风潮，金融中心的地位亦随即受创。调查期间，警队众人各怀鬼胎，为名利攀附权贵。面对各种挑战，O记警司李文彬以身犯险游走各界，势要揭露真相，维护香港繁荣稳定。</div>
         </div>
       </article>
     </div>
+    <p class="showcase-note reveal">示例与项目实际产出一致：图片为 TMDB 背景图，评分与剧情来自 TMDB 接口，时间会在打开页面时自动生成（格式与通知中的 ⏰ 时间 相同）。</p>
   </section>
 
   <section id="advantages" class="section container">
@@ -1689,6 +1703,16 @@ if(terminalBody){
   terminalBody.innerHTML = '';
   setTimeout(typeTerminal, 350);
 }
+
+function fillNotifyTime(){
+  const now = new Date();
+  const pad = (value) => String(value).padStart(2, '0');
+  const stamp = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  document.querySelectorAll('.notify-time').forEach((el) => {
+    el.textContent = `⏰ 时间: ${stamp}`;
+  });
+}
+fillNotifyTime();
 
 const revealObserver = new IntersectionObserver(entries=>{
   entries.forEach(entry=>{
