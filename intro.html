@@ -675,6 +675,68 @@ body::before{
 .copy-code .cmd{color:#8ee6dc}
 .copy-code .out{color:#7fe0ae}
 
+/* Credits */
+.credit-card{
+  display:flex;
+  align-items:center;
+  gap:16px;
+  padding:20px 22px;
+  border:1px solid var(--line);
+  border-radius:22px;
+  background:var(--surface);
+  box-shadow:var(--shadow-soft),var(--glow);
+  backdrop-filter:blur(16px) saturate(120%);
+  -webkit-backdrop-filter:blur(16px) saturate(120%);
+  color:var(--text);
+  text-decoration:none;
+  transition:transform .25s,box-shadow .25s,border-color .25s;
+}
+.credit-card:hover{
+  transform:translateY(-3px);
+  border-color:var(--line-strong);
+  box-shadow:var(--shadow),var(--glow);
+}
+.credit-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  width:48px;
+  height:48px;
+  border-radius:15px;
+  background:var(--blue-soft);
+  color:var(--blue);
+  box-shadow:0 1px 0 rgba(255,255,255,.8) inset;
+}
+.credit-main{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
+  min-width:0;
+}
+.credit-main strong{
+  font-family:var(--font-display);
+  font-size:16px;
+  font-weight:700;
+}
+.credit-main small{
+  color:var(--muted);
+  font-size:12.5px;
+  line-height:1.6;
+}
+.credit-arrow{
+  flex:0 0 auto;
+  margin-left:auto;
+  color:var(--muted);
+  font-family:var(--font-mono);
+  font-size:18px;
+  transition:color .2s,transform .2s;
+}
+.credit-card:hover .credit-arrow{
+  color:var(--blue);
+  transform:translate(3px,-3px);
+}
+
 /* Footer */
 .footer{
   margin-top:70px;
@@ -755,6 +817,7 @@ body::before{
       <li><a href="#advantages">为什么选它</a></li>
       <li><a href="#architecture">工作流</a></li>
       <li><a href="#quickstart">快速开始</a></li>
+      <li><a href="#credits">灵感</a></li>
     </ul>
     <a class="nav-cta" href="https://github.com/sisheng36/cover_generator" target="_blank" rel="noreferrer">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .5C5.65.5.5 5.65.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56v-2.17c-3.2.7-3.87-1.36-3.87-1.36-.52-1.33-1.28-1.68-1.28-1.68-1.04-.71.08-.7.08-.7 1.15.08 1.76 1.18 1.76 1.18 1.03 1.76 2.69 1.25 3.35.96.1-.75.4-1.25.72-1.54-2.55-.29-5.23-1.28-5.23-5.69 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.05 0 0 .96-.31 3.16 1.18a10.9 10.9 0 0 1 5.75 0c2.19-1.49 3.15-1.18 3.15-1.18.63 1.59.24 2.76.12 3.05.74.81 1.18 1.84 1.18 3.1 0 4.42-2.69 5.39-5.25 5.68.41.35.78 1.05.78 2.12v3.14c0 .31.21.67.8.55A11.51 11.51 0 0 0 23.5 12C23.5 5.65 18.35.5 12 .5z"/></svg>
@@ -1061,6 +1124,24 @@ body::before{
       </article>
     </div>
   </section>
+
+  <section id="credits" class="section container">
+    <div class="section-head reveal">
+      <span class="section-kicker">credits / inspired by</span>
+      <h2>灵感与借鉴</h2>
+      <p class="section-desc">本项目的封面生成与入库监控设计，借鉴了以下开源项目，在此致谢。</p>
+    </div>
+    <a class="credit-card reveal" href="https://github.com/justzerock/MoviePilot-Plugins" target="_blank" rel="noreferrer" aria-label="查看借鉴项目 Yahaha Cover Studio">
+      <span class="credit-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      </span>
+      <span class="credit-main">
+        <strong>Yahaha Cover Studio</strong>
+        <small>justzerock/MoviePilot-Plugins · 为 Emby / Jellyfin 媒体库生成静态与动态封面的开源封面工具</small>
+      </span>
+      <span class="credit-arrow" aria-hidden="true">↗</span>
+    </a>
+  </section>
 </main>
 
 <footer class="footer">
@@ -1068,6 +1149,7 @@ body::before{
     <div class="footer-meta">EmbyTool · <span>media library workbench</span> · self-hosted</div>
     <div class="footer-links">
       <a href="#top">返回顶部</a>
+      <a href="https://github.com/justzerock/MoviePilot-Plugins" target="_blank" rel="noreferrer">借鉴项目</a>
       <a href="https://github.com/sisheng36/cover_generator" target="_blank" rel="noreferrer">GitHub</a>
     </div>
   </div>
