@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>EmbyTool · 媒体库封面与入库自动化工作台</title>
-<meta name="description" content="EmbyTool：用 Go 打造的 Emby 媒体库封面生成、Webhook 入库通知、入库统计与自动联动工作台。">
+<title>Cover Generator · 媒体库封面与入库自动化工作台</title>
+<meta name="description" content="Cover Generator：用 Go 打造的 Emby 媒体库封面生成、Webhook 入库通知、入库统计与自动联动工作台。">
 <meta name="theme-color" content="#08786f">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%2308786f'/%3E%3Cpath d='M20 18h24v6H20zm0 11h24v6H20zm0 11h24v6H20z' fill='%23fff'/%3E%3C/svg%3E">
 <script>document.documentElement.classList.add('js');</script>
@@ -948,7 +948,7 @@ body::before{
         <circle cx="47" cy="47" r="5" fill="#ffb07c"/>
       </svg>
       <span>
-        <span class="brand-name">EmbyTool</span>
+        <span class="brand-name">Cover Generator</span>
         <span class="brand-sub">media library workbench</span>
       </span>
     </a>
@@ -956,7 +956,7 @@ body::before{
       <li><a href="#features">核心功能</a></li>
       <li><a href="#advantages">为什么选它</a></li>
       <li><a href="#architecture">工作流</a></li>
-      <li><a href="#quickstart">快速开始</a></li>
+      <li><a href="#quickstart">部署</a></li>
       <li><a href="#credits">灵感</a></li>
     </ul>
     <a class="nav-cta" href="https://github.com/sisheng36/cover_generator" target="_blank" rel="noreferrer">
@@ -971,7 +971,7 @@ body::before{
     <div class="hero-copy reveal visible">
       <span class="eyebrow"><span class="eyebrow-dot"></span> self-hosted · webhook · automation</span>
       <h1>让 Emby 媒体库<br><span class="gradient">自动好看，自动通知</span></h1>
-      <p class="hero-lead">EmbyTool 是一个用 Go 打造的媒体库工作台：自动生成美化封面、监听 Webhook 新入库事件、发送 Telegram 通知，并把入库情况整理成可视化的总览面板。</p>
+      <p class="hero-lead">Cover Generator 是一个用 Go 打造的媒体库工作台：自动生成美化封面、监听 Webhook 新入库事件、发送 Telegram 通知，并把入库情况整理成可视化的总览面板。</p>
       <div class="hero-tags" aria-label="技术标签">
         <span class="hero-tag">Go</span>
         <span class="hero-tag">Emby API</span>
@@ -988,12 +988,12 @@ body::before{
       </div>
     </div>
 
-    <div class="terminal reveal visible reveal-delay-1" aria-label="EmbyTool 终端演示">
+    <div class="terminal reveal visible reveal-delay-1" aria-label="Cover Generator 终端演示">
       <div class="terminal-bar">
         <span class="term-dot"></span>
         <span class="term-dot"></span>
         <span class="term-dot"></span>
-        <span class="terminal-title">embytool — zsh</span>
+        <span class="terminal-title">cover-generator — zsh</span>
       </div>
       <div class="terminal-body" id="terminalBody" aria-live="polite"></div>
     </div>
@@ -1026,7 +1026,7 @@ body::before{
     <div class="section-head reveal">
       <span class="section-kicker">core capabilities</span>
       <h2>一个工具，打通入库后的整条链路</h2>
-      <p class="section-desc">从 Emby 新入库的那一刻开始，封面、通知和统计都由 EmbyTool 接管。</p>
+      <p class="section-desc">从 Emby 新入库的那一刻开始，封面、通知和统计都由 Cover Generator 接管。</p>
     </div>
     <div class="features">
       <article class="feature-card reveal">
@@ -1114,7 +1114,7 @@ body::before{
       </span>
       <div>
         <h3>安全提示</h3>
-        <p>部署完成后，请将 EmbyTool 的 <code>8055</code> 端口纳入防火墙，仅允许内网访问。控制台中保存了 Emby API Key，如果把端口暴露到公网，可能导致 Token 泄露并带来安全损失。</p>
+        <p>部署完成后，请将 Cover Generator 的 <code>8055</code> 端口纳入防火墙，仅允许内网访问。控制台中保存了 Emby API Key，如果把端口暴露到公网，可能导致 Token 泄露并带来安全损失。</p>
         <p>开发调试时如果希望保持端口可访问，也请确保只在局域网内访问，不要把端口映射或开放到公网。</p>
       </div>
     </aside>
@@ -1122,8 +1122,8 @@ body::before{
 
   <section id="advantages" class="section container">
     <div class="section-head reveal">
-      <span class="section-kicker">why embytool</span>
-      <h2>为什么值得用 EmbyTool</h2>
+      <span class="section-kicker">why cover-generator</span>
+      <h2>为什么值得用 Cover Generator</h2>
       <p class="section-desc">不是为了堆功能，而是把媒体库入库后最常做的事，做成一站式的自动化闭环。</p>
     </div>
     <div class="advantages">
@@ -1165,7 +1165,7 @@ body::before{
         </article>
       </div>
 
-      <div class="code-panel reveal reveal-delay-1" aria-label="EmbyTool 配置示例">
+      <div class="code-panel reveal reveal-delay-1" aria-label="Cover Generator 配置示例">
         <div class="code-panel-head">
           <span>settings → /data/config.json</span>
           <span>local</span>
@@ -1193,7 +1193,7 @@ body::before{
     <div class="section-head reveal">
       <span class="section-kicker">event flow</span>
       <h2>一条入库事件，如何跑完全流程</h2>
-      <p class="section-desc">Emby 只需要把 Webhook 指向 EmbyTool，剩下的事情交给自动化。</p>
+      <p class="section-desc">Emby 只需要把 Webhook 指向 Cover Generator，剩下的事情交给自动化。</p>
     </div>
     <div class="flow">
       <article class="flow-node reveal">
@@ -1208,7 +1208,7 @@ body::before{
       </article>
       <article class="flow-node highlight reveal reveal-delay-2">
         <span class="index">03</span>
-        <h3>EmbyTool 解析</h3>
+        <h3>Cover Generator 解析</h3>
         <p>识别媒体类型、剧集与服务器</p>
       </article>
       <article class="flow-node reveal reveal-delay-3">
@@ -1236,26 +1236,34 @@ body::before{
 
   <section id="quickstart" class="section container">
     <div class="section-head reveal">
-      <span class="section-kicker">quick start</span>
-      <h2>从零到跑起来，只需要几步</h2>
-      <p class="section-desc">Docker Compose 一键启动，随后在 Emby 后台把 Webhook 指向 EmbyTool 即可。</p>
+      <span class="section-kicker">deploy / quick start</span>
+      <h2>部署与快速开始</h2>
+      <p class="section-desc">Docker Compose 一键启动，随后在 Emby 后台把 Webhook 指向 Cover Generator 即可。</p>
     </div>
     <div class="quickstart">
       <article class="quick-card reveal">
-        <h3>1 · 启动服务</h3>
-        <p>使用 <code>docker compose up -d</code> 启动后，打开 <code>http://localhost:8055</code> 即可进入控制台。</p>
+        <h3>1 · Docker Compose 部署</h3>
+        <p>将下面配置保存为 <code>docker-compose.yml</code>，在项目目录执行 <code>docker compose up -d</code>，随后打开 <code>http://localhost:8055</code> 即可进入控制台。</p>
         <div class="copy-wrap">
           <div class="copy-bar">
-            <span>deploy.sh</span>
+            <span>docker-compose.yml</span>
             <button class="copy-btn" type="button" data-copy-target="deployCode">复制</button>
           </div>
-          <div class="copy-code" id="deployCode"><span class="cmt"># 启动 EmbyTool</span>
-<span class="cmd">$ docker compose up -d</span>
-<span class="out">[✓] EmbyTool is running on :8055</span>
-
-<span class="cmt"># 打开工作台</span>
-<span class="cmd">$ open http://localhost:8055</span></div>
+          <div class="copy-code" id="deployCode"><span class="cmt"># docker-compose.yml</span>
+<span class="cmd">services:</span>
+  <span class="cmd">cover-generator:</span>
+    <span class="cmd">image:</span> <span class="out">ghcr.io/sisheng36/cover_generator:latest</span>
+    <span class="cmd">container_name:</span> <span class="out">Cover-Generator</span>
+    <span class="cmd">network_mode:</span> <span class="out">host</span>
+    <span class="cmd">ports:</span>
+      <span class="out">- "8055:8055"</span>
+    <span class="cmd">volumes:</span>
+      <span class="out">- ./data:/data</span>
+    <span class="cmd">environment:</span>
+      <span class="out">- TZ=Asia/Shanghai</span>
+    <span class="cmd">restart:</span> <span class="out">always</span></div>
         </div>
+        <p class="webhook-hint">提示：使用 <code>network_mode: host</code> 时服务会直接监听宿主机 <code>8055</code>；<code>ports</code> 映射可按实际网络模式保留或调整。</p>
       </article>
       <article class="quick-card reveal reveal-delay-1">
         <h3>2 · 配置 Emby Webhook</h3>
@@ -1274,7 +1282,7 @@ body::before{
             <code>媒体库 → 已添加新媒体</code>
           </div>
         </div>
-        <p class="webhook-hint">提示：<code>127.0.0.1</code> 仅适用于 Emby 与 EmbyTool 同机部署；跨设备请填写 EmbyTool 的实际内网地址，并保持端口仅内网可访问。</p>
+        <p class="webhook-hint">提示：<code>127.0.0.1</code> 仅适用于 Emby 与 Cover Generator 同机部署；跨设备请填写 Cover Generator 的实际内网地址，并保持端口仅内网可访问。</p>
         <div class="copy-wrap">
           <div class="copy-bar">
             <span>webhook</span>
@@ -1309,7 +1317,7 @@ body::before{
     <div class="thanks-block reveal reveal-delay-1">
       <span class="section-kicker">thanks</span>
       <h3>致谢</h3>
-      <p>EmbyTool 的自动化能力离不开这些优秀的产品与开放生态，衷心感谢。</p>
+      <p>Cover Generator 的自动化能力离不开这些优秀的产品与开放生态，衷心感谢。</p>
       <div class="thanks-list">
         <a class="thanks-chip" href="https://emby.media" target="_blank" rel="noreferrer">
           <strong>Emby</strong>
@@ -1330,7 +1338,7 @@ body::before{
 
 <footer class="footer">
   <div class="container footer-inner">
-    <div class="footer-meta">EmbyTool · <span>media library workbench</span> · self-hosted</div>
+    <div class="footer-meta">Cover Generator · <span>media library workbench</span> · self-hosted</div>
     <div class="footer-links">
       <a href="#top">返回顶部</a>
       <a href="https://github.com/justzerock/MoviePilot-Plugins" target="_blank" rel="noreferrer">借鉴项目</a>
@@ -1341,7 +1349,7 @@ body::before{
 
 <script>
 const terminalLines = [
-  {text:'$ embytool', html:'<span class="dim">$</span> <span class="blue">embytool</span>'},
+  {text:'$ cover-generator', html:'<span class="dim">$</span> <span class="blue">cover-generator</span>'},
   {text:'[system] 已启动 · listening on :8055', html:'<span class="dim">[system]</span> <span class="green">已启动</span> <span class="dim">· listening on :8055</span>'},
   {text:'[webhook] 收到 library.new → 电影《流浪地球 3》', html:'<span class="dim">[webhook]</span> <span class="green">收到</span> <span class="blue">library.new</span> <span class="dim">→ 电影《流浪地球 3》</span>'},
   {text:'[cover] 已更新媒体库封面 · style=single_2', html:'<span class="dim">[cover]</span> <span class="green">已更新媒体库封面</span> <span class="dim">· style=single_2</span>'},
