@@ -1360,7 +1360,7 @@ body::after{
     </div>
 
     <h3 class="showcase-sub reveal">Telegram 通知示例</h3>
-    <div class="notify-examples" data-i18n-ignore>
+    <div class="notify-examples">
       <article class="notify-card reveal">
         <div class="notify-head">
           <span class="notify-app-icon">
@@ -1371,7 +1371,7 @@ body::after{
             <small>剧集 · 刚刚</small>
           </div>
         </div>
-        <div class="notify-body">
+        <div class="notify-body" data-i18n-ignore>
           <img class="notify-photo" src="https://image.tmdb.org/t/p/original/yoTP91XZZjSvE2gZgGvwNxVW96w.jpg" alt="柯蒂斯总统 (2026) 背景图" loading="lazy">
           <strong>📺 柯蒂斯总统 (2026) ✨ 入库成功</strong>
           <div>🎞️ 集数: S01E01</div>
@@ -1391,7 +1391,7 @@ body::after{
             <small>电影 · 刚刚</small>
           </div>
         </div>
-        <div class="notify-body">
+        <div class="notify-body" data-i18n-ignore>
           <img class="notify-photo" src="https://image.tmdb.org/t/p/original/92W00NvclecWWsXDjCwr5f23KSk.jpg" alt="寒战1994 (2026) 背景图" loading="lazy">
           <strong>🎬 寒战1994 (2026) ✨ 入库成功</strong>
           <div class="notify-time">⏰ 时间: ---- --:--:--</div>
@@ -1748,6 +1748,9 @@ const STATIC_I18N = [
   ['返回顶部', 'Back to top'],
   ['借鉴项目', 'Inspired by'],
   ['Webhook 入口', 'Webhook endpoint'],
+  ['定时任务', 'Scheduled tasks'],
+  ['安全提示', 'Security notes'],
+  ['致谢', 'Thanks'],
   ['自动化链路', 'Automation chain'],
   ['封面 · 通知 · 统计', 'Covers · Notify · Stats'],
   ['统计窗口', 'Stats window'],
@@ -1758,6 +1761,8 @@ const STATIC_I18N = [
   ['适合主视觉突出的海报', 'For striking key art'],
   ['适合人物和场景铺满画面', 'For art that fills the frame'],
   ['适合九宫格海报墙效果', 'For a grid poster-wall effect'],
+  ['剧集 · 刚刚', 'TV Show · just now'],
+  ['电影 · 刚刚', 'Movie · just now'],
   ['多风格', 'Multi-style'],
   ['自定义标题', 'Custom titles'],
   ['手动上传', 'Manual upload'],
