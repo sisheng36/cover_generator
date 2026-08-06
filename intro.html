@@ -631,6 +631,51 @@ body::before{
   font-family:var(--font-mono);
   font-size:11.5px;
 }
+.security-notice{
+  display:flex;
+  gap:15px;
+  align-items:flex-start;
+  margin-top:22px;
+  padding:20px 22px;
+  border:1px solid rgba(184,83,46,.3);
+  border-radius:20px;
+  background:var(--orange-soft);
+  box-shadow:0 1px 0 rgba(255,255,255,.72) inset;
+}
+.security-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  width:42px;
+  height:42px;
+  border-radius:14px;
+  background:rgba(255,255,255,.62);
+  color:var(--orange);
+  box-shadow:0 1px 0 rgba(255,255,255,.8) inset;
+}
+.security-notice h3{
+  font-family:var(--font-display);
+  font-size:16px;
+  font-weight:700;
+  color:var(--orange);
+}
+.security-notice p{
+  margin-top:5px;
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.7;
+}
+.security-notice p + p{margin-top:8px}
+.security-notice code{
+  display:inline-block;
+  padding:2px 7px;
+  border-radius:7px;
+  background:rgba(255,255,255,.62);
+  color:var(--orange);
+  font-family:var(--font-mono);
+  font-size:11.5px;
+}
 .copy-wrap{
   position:relative;
   margin-top:18px;
@@ -1024,6 +1069,17 @@ body::before{
         </div>
       </article>
     </div>
+
+    <aside class="security-notice reveal" role="note">
+      <span class="security-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 3v6c0 5-3.5 9-8 11-4.5-2-8-6-8-11V5l8-3z"/><path d="M12 8v5"/><path d="M12 16.5v.5"/></svg>
+      </span>
+      <div>
+        <h3>安全提示</h3>
+        <p>部署完成后，请将 EmbyTool 的 <code>8055</code> 端口纳入防火墙，仅允许内网访问。控制台中保存了 Emby API Key，如果把端口暴露到公网，可能导致 Token 泄露并带来安全损失。</p>
+        <p>开发调试时如果希望保持端口可访问，也请确保只在局域网内访问，不要把端口映射或开放到公网。</p>
+      </div>
+    </aside>
   </section>
 
   <section id="advantages" class="section container">
