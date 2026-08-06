@@ -128,6 +128,7 @@ func (c *Cache) loadAsset(path string) (*asset, error) {
 
 	font0, fontErr := opentype.Parse(data)
 	if fontErr != nil {
+		fontErr = fmt.Errorf("加载字体 %s: %w", absPath, fontErr)
 		c.mu.Lock()
 		c.loadErr[absPath] = fontErr
 		c.mu.Unlock()

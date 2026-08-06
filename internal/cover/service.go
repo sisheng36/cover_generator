@@ -77,7 +77,10 @@ func NewService(fonts *fonts.Cache) *Service {
 
 func ResolveFontPaths(cfg config.Config) FontPaths {
 	zhDefault := filepath.Join("fonts", "zh_font.ttf")
-	enDefault := filepath.Join("fonts", "en_font.ttf")
+	// fonts/en_font.ttf 实际是 WOFF2（wOF2 文件头），golang.org/x/image/font/opentype
+	// 无法解析，单图风格加载英文标题时会报 sfnt: invalid font。这里使用多图风格
+	// 已验证可用的 en_font_multi_1.otf 作为单图默认英文字体。
+	enDefault := filepath.Join("fonts", "en_font_multi_1.otf")
 	zhMultiDefault := filepath.Join("fonts", "zh_font_multi_1.ttf")
 	enMultiDefault := filepath.Join("fonts", "en_font_multi_1.otf")
 
