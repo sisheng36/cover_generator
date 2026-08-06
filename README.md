@@ -1,6 +1,6 @@
-# EmbyTool
+# Cover Generator
 
-EmbyTool 是一个用于 Emby 媒体库封面生成和入库通知的 Go 工具，支持：
+Cover Generator 是一个用于 Emby 媒体库封面生成和入库通知的 Go 工具，支持：
 
 - 媒体库封面自动生成
 - 手动上传图片生成封面
@@ -48,3 +48,9 @@ go run ./cmd/embytool
 ## 说明
 
 默认端口为 `8055`。Docker 构建时会自动写入版本信息到 `VERSION`。
+
+## License
+
+本项目基于 [GNU General Public License v3.0](LICENSE) 开源发布。
+
+灵感与借鉴：[Yahaha Cover Studio / justzerock/MoviePilot-Plugins](https://github.com/justzerock/MoviePilot-Plugins)（GPL v3.0）。

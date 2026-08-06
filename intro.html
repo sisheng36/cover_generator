@@ -820,6 +820,56 @@ body::before{
   transform:translate(3px,-3px);
 }
 
+/* License */
+.license-note{
+  display:flex;
+  gap:15px;
+  align-items:flex-start;
+  margin-top:16px;
+  padding:18px 20px;
+  border:1px solid rgba(8,120,111,.22);
+  border-radius:20px;
+  background:var(--blue-soft);
+  box-shadow:0 1px 0 rgba(255,255,255,.72) inset;
+}
+.license-icon{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 auto;
+  width:42px;
+  height:42px;
+  border-radius:14px;
+  background:rgba(255,255,255,.62);
+  color:var(--blue);
+  box-shadow:0 1px 0 rgba(255,255,255,.8) inset;
+}
+.license-note h3{
+  font-family:var(--font-display);
+  font-size:15px;
+  font-weight:700;
+  color:var(--blue-deep);
+}
+.license-note p{
+  margin-top:5px;
+  color:var(--muted);
+  font-size:12.5px;
+  line-height:1.7;
+}
+.license-note a{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  margin-top:8px;
+  color:var(--blue-deep);
+  font-family:var(--font-mono);
+  font-size:12px;
+  font-weight:600;
+  text-decoration:none;
+  transition:color .2s;
+}
+.license-note a:hover{color:var(--blue)}
+
 /* Thanks */
 .thanks-block{
   margin-top:28px;
@@ -1314,6 +1364,17 @@ body::before{
       <span class="credit-arrow" aria-hidden="true">↗</span>
     </a>
 
+    <div class="license-note reveal reveal-delay-1">
+      <span class="license-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7 3v5c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V6l7-3z"/><path d="M9 12l2 2 4-4"/></svg>
+      </span>
+      <div>
+        <h3>开源许可 · GNU GPL v3.0</h3>
+        <p>本项目与借鉴项目一致，采用 GNU General Public License v3.0 开源；使用、修改或分发时请遵守 GPL v3.0 协议。</p>
+        <a href="https://github.com/sisheng36/cover_generator/blob/main/LICENSE" target="_blank" rel="noreferrer">查看 LICENSE ↗</a>
+      </div>
+    </div>
+
     <div class="thanks-block reveal reveal-delay-1">
       <span class="section-kicker">thanks</span>
       <h3>致谢</h3>
@@ -1341,6 +1402,7 @@ body::before{
     <div class="footer-meta">Cover Generator · <span>media library workbench</span> · self-hosted</div>
     <div class="footer-links">
       <a href="#top">返回顶部</a>
+      <a href="https://github.com/sisheng36/cover_generator/blob/main/LICENSE" target="_blank" rel="noreferrer">GPL-3.0</a>
       <a href="https://github.com/justzerock/MoviePilot-Plugins" target="_blank" rel="noreferrer">借鉴项目</a>
       <a href="https://github.com/sisheng36/cover_generator" target="_blank" rel="noreferrer">GitHub</a>
     </div>
