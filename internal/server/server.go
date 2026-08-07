@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -568,6 +569,7 @@ func (s *Server) runGenerationJob(job *generationJob, cfg config.Config, library
 			log.Printf("生成任务发生 panic: %v", r)
 			job.fail(fmt.Sprintf("内部异常: %v", r))
 		}
+		debug.FreeOSMemory()
 	}()
 
 	ctx := context.Background()
