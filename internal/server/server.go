@@ -42,6 +42,8 @@ type Server struct {
 	scheduler   *scheduler.Manager
 	autoCover   *autoCoverScheduler
 	importStats *importStatsStore
+	genMu       sync.Mutex
+	genJob      *generationJob
 	httpServer  *http.Server
 	addr        string
 	staticDir   string
@@ -51,6 +53,32 @@ type Server struct {
 type libraryGenerateItem struct {
 	Library string `json:"library"`
 	cover.Result
+}
+
+type generationJob struct {
+	mu         sync.Mutex
+	id         string
+	status     string
+	startedAt  time.Time
+	finishedAt time.Time
+	total      int
+	done       int
+	current    string
+	results    []libraryGenerateItem
+	message    string
+}
+
+type generationStatusResponse struct {
+	ID             string                `json:"id,omitempty"`
+	Status         string                `json:"status"`
+	Running        bool                  `json:"running"`
+	Total          int                   `json:"total"`
+	Done           int                   `json:"done"`
+	CurrentLibrary string                `json:"current_library,omitempty"`
+	Message        string                `json:"message,omitempty"`
+	StartedAt      string                `json:"started_at,omitempty"`
+	FinishedAt     string                `json:"finished_at,omitempty"`
+	Results        []libraryGenerateItem `json:"results"`
 }
 
 type autoCoverStatusItem struct {
@@ -109,29 +137,9 @@ func (s *Server) Run(ctx context.Context) error {
 	cfg := s.currentConfig()
 	s.scheduler.Start(cfg.SchedulerEnabled, cfg.SchedulerCron, s.scheduledGenerate)
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", s.handleIndex)
-	mux.HandleFunc("/favicon.ico", s.handleFavicon)
-	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(s.staticDir))))
-	mux.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir(s.imagesDir))))
-	mux.HandleFunc("/api/version", s.handleVersion)
-	mux.HandleFunc("/api/config", s.handleConfig)
-	mux.HandleFunc("/api/libraries", s.handleLibraries)
-	mux.HandleFunc("/api/libraries/generate", s.handleLibrariesGenerate)
-	mux.HandleFunc("/api/libraries/generate_all", s.handleLibrariesGenerateAll)
-	mux.HandleFunc("/api/generate", s.handleGenerate)
-	mux.HandleFunc("/api/scheduler/status", s.handleSchedulerStatus)
-	mux.HandleFunc("/api/scheduler/restart", s.handleSchedulerRestart)
-	mux.HandleFunc("/api/health", s.handleHealth)
-	mux.HandleFunc("/api/mem", s.handleMem)
-	mux.HandleFunc("/api/auto_cover/status", s.handleAutoCoverStatus)
-	mux.HandleFunc("/api/overview", s.handleOverview)
-	mux.HandleFunc("/api/recent-imports/poster", s.handleRecentImportPoster)
-	mux.HandleFunc("/webhook/emby", s.handleWebhook)
-
 	srv := &http.Server{
 		Addr:    s.addr,
-		Handler: mux,
+		Handler: s.mux(),
 	}
 	s.httpServer = srv
 
@@ -165,6 +173,30 @@ func (s *Server) Run(ctx context.Context) error {
 		}
 		return nil
 	}
+}
+
+func (s *Server) mux() *http.ServeMux {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", s.handleIndex)
+	mux.HandleFunc("/favicon.ico", s.handleFavicon)
+	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir(s.staticDir))))
+	mux.Handle("/images/", http.StripPrefix("/images/", http.FileServer(http.Dir(s.imagesDir))))
+	mux.HandleFunc("/api/version", s.handleVersion)
+	mux.HandleFunc("/api/config", s.handleConfig)
+	mux.HandleFunc("/api/libraries", s.handleLibraries)
+	mux.HandleFunc("/api/libraries/generate", s.handleLibrariesGenerate)
+	mux.HandleFunc("/api/libraries/generate_all", s.handleLibrariesGenerateAll)
+	mux.HandleFunc("/api/generation/status", s.handleGenerationStatus)
+	mux.HandleFunc("/api/generate", s.handleGenerate)
+	mux.HandleFunc("/api/scheduler/status", s.handleSchedulerStatus)
+	mux.HandleFunc("/api/scheduler/restart", s.handleSchedulerRestart)
+	mux.HandleFunc("/api/health", s.handleHealth)
+	mux.HandleFunc("/api/mem", s.handleMem)
+	mux.HandleFunc("/api/auto_cover/status", s.handleAutoCoverStatus)
+	mux.HandleFunc("/api/overview", s.handleOverview)
+	mux.HandleFunc("/api/recent-imports/poster", s.handleRecentImportPoster)
+	mux.HandleFunc("/webhook/emby", s.handleWebhook)
+	return mux
 }
 
 func (s *Server) currentConfig() config.Config {
@@ -478,38 +510,12 @@ func (s *Server) handleLibrariesGenerate(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	cfg := s.currentConfig()
-	client := emby.NewWithUserID(cfg.EmbyServerURL, cfg.EmbyAPIKey, cfg.EmbyUserID)
-	libraries, err := client.GetLibraries(r.Context())
+	jobID, err := s.startGenerationJob(payload.LibraryIDs, false)
 	if err != nil {
-		writeJSON(w, http.StatusBadGateway, map[string]any{
-			"ok":      false,
-			"message": fmt.Sprintf("连接 Emby 失败: %v", err),
-		})
+		writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "message": err.Error()})
 		return
 	}
-
-	selected := filterLibrariesByIDs(libraries, payload.LibraryIDs)
-	if len(selected) == 0 {
-		writeJSON(w, http.StatusNotFound, map[string]any{"ok": false, "message": "未找到指定媒体库"})
-		return
-	}
-
-	results := make([]libraryGenerateItem, 0, len(selected))
-	for _, library := range selected {
-		result := s.generateLibraryCover(r.Context(), client, library, cfg)
-		results = append(results, libraryGenerateItem{
-			Library: asString(library["Name"]),
-			Result:  result,
-		})
-		log.Printf("[%s] %s", asString(library["Name"]), result.Message)
-	}
-
-	writeJSON(w, http.StatusOK, map[string]any{
-		"ok":      true,
-		"results": results,
-	})
-	runtime.GC()
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "job_id": jobID})
 }
 
 func (s *Server) handleLibrariesGenerateAll(w http.ResponseWriter, r *http.Request) {
@@ -518,41 +524,164 @@ func (s *Server) handleLibrariesGenerateAll(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	cfg := s.currentConfig()
-	client := emby.NewWithUserID(cfg.EmbyServerURL, cfg.EmbyAPIKey, cfg.EmbyUserID)
-	libraries, err := client.GetLibraries(r.Context())
+	jobID, err := s.startGenerationJob(nil, true)
 	if err != nil {
-		writeJSON(w, http.StatusBadGateway, map[string]any{
-			"ok":      false,
-			"message": fmt.Sprintf("连接 Emby 失败: %v", err),
-		})
+		writeJSON(w, http.StatusConflict, map[string]any{"ok": false, "message": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "job_id": jobID})
+}
+
+func (s *Server) handleGenerationStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		methodNotAllowed(w, http.MethodGet)
 		return
 	}
 
-	selected := cfg.SelectedLibraries
-	if len(selected) > 0 {
-		libraries = filterLibrariesByIDs(libraries, selected)
+	s.genMu.Lock()
+	status := generationStatusResponse{Status: "idle"}
+	if s.genJob != nil {
+		status = s.genJob.snapshot()
+	}
+	s.genMu.Unlock()
+	writeJSON(w, http.StatusOK, status)
+}
+
+func (s *Server) startGenerationJob(libraryIDs []string, all bool) (string, error) {
+	s.genMu.Lock()
+	defer s.genMu.Unlock()
+
+	if s.genJob != nil && s.genJob.isRunning() {
+		return "", fmt.Errorf("已有生成任务正在运行，请稍后再试")
+	}
+
+	cfg := s.currentConfig()
+	job := newGenerationJob()
+	s.genJob = job
+	go s.runGenerationJob(job, cfg, libraryIDs, all)
+	return job.id, nil
+}
+
+func (s *Server) runGenerationJob(job *generationJob, cfg config.Config, libraryIDs []string, all bool) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("生成任务发生 panic: %v", r)
+			job.fail(fmt.Sprintf("内部异常: %v", r))
+		}
+	}()
+
+	ctx := context.Background()
+	client := emby.NewWithUserID(cfg.EmbyServerURL, cfg.EmbyAPIKey, cfg.EmbyUserID)
+	libraries, err := client.GetLibraries(ctx)
+	if err != nil {
+		job.fail(fmt.Sprintf("连接 Emby 失败: %v", err))
+		return
+	}
+
+	if all {
+		if len(cfg.SelectedLibraries) > 0 {
+			libraries = filterLibrariesByIDs(libraries, cfg.SelectedLibraries)
+		}
+	} else {
+		libraries = filterLibrariesByIDs(libraries, libraryIDs)
 	}
 	if len(libraries) == 0 {
-		writeJSON(w, http.StatusBadRequest, map[string]any{"ok": false, "message": "没有可用的媒体库"})
+		if all {
+			job.fail("没有可用的媒体库")
+		} else {
+			job.fail("未找到指定媒体库")
+		}
 		return
 	}
 
-	results := make([]libraryGenerateItem, 0, len(libraries))
+	job.start(len(libraries))
 	for _, library := range libraries {
-		result := s.generateLibraryCover(r.Context(), client, library, cfg)
-		results = append(results, libraryGenerateItem{
-			Library: asString(library["Name"]),
-			Result:  result,
-		})
-		log.Printf("[%s] %s", asString(library["Name"]), result.Message)
+		name := firstNonEmpty(asString(library["Name"]), "Unknown")
+		job.setCurrent(name)
+		result := s.generateLibraryCover(ctx, client, library, cfg)
+		job.addResult(libraryGenerateItem{Library: name, Result: result})
+		log.Printf("[%s] %s", name, result.Message)
+		runtime.GC()
 	}
+	job.finish()
+}
 
-	writeJSON(w, http.StatusOK, map[string]any{
-		"ok":      true,
-		"results": results,
-	})
-	runtime.GC()
+func newGenerationJob() *generationJob {
+	return &generationJob{
+		id:        strconv.FormatInt(time.Now().UnixNano(), 10),
+		status:    "running",
+		startedAt: time.Now(),
+		results:   []libraryGenerateItem{},
+	}
+}
+
+func (j *generationJob) isRunning() bool {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	return j.status == "running"
+}
+
+func (j *generationJob) start(total int) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	j.status = "running"
+	j.total = total
+	j.done = 0
+	j.results = []libraryGenerateItem{}
+}
+
+func (j *generationJob) setCurrent(name string) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	j.current = name
+}
+
+func (j *generationJob) addResult(result libraryGenerateItem) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	j.results = append(j.results, result)
+	j.done = len(j.results)
+}
+
+func (j *generationJob) finish() {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	j.status = "completed"
+	j.finishedAt = time.Now()
+}
+
+func (j *generationJob) fail(message string) {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	if j.status == "running" {
+		j.status = "failed"
+	}
+	j.message = message
+	j.finishedAt = time.Now()
+}
+
+func (j *generationJob) snapshot() generationStatusResponse {
+	j.mu.Lock()
+	defer j.mu.Unlock()
+	resp := generationStatusResponse{
+		ID:      j.id,
+		Status:  j.status,
+		Running: j.status == "running",
+		Total:   j.total,
+		Done:    j.done,
+		Message: j.message,
+		Results: append([]libraryGenerateItem(nil), j.results...),
+	}
+	if j.current != "" {
+		resp.CurrentLibrary = j.current
+	}
+	if !j.startedAt.IsZero() {
+		resp.StartedAt = j.startedAt.Format(time.RFC3339)
+	}
+	if !j.finishedAt.IsZero() {
+		resp.FinishedAt = j.finishedAt.Format(time.RFC3339)
+	}
+	return resp
 }
 
 func (s *Server) generateLibraryCover(ctx context.Context, client *emby.Client, library map[string]any, cfg config.Config) (result cover.Result) {

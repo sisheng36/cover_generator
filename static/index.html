@@ -988,6 +988,9 @@ function switchPage(page){
   if(page === 'notify'){
     loadAutoCoverStatus();
   }
+  if(page === 'cover'){
+    loadGenerationStatus();
+  }
   if(page === 'overview'){
     animateOverview();
     loadOverview(true);
@@ -1562,12 +1565,9 @@ async function generateAll(){
 }
 
 async function generateLibraries(ids){
-  const btnSelected = document.getElementById('btnGenerateSelected');
-  const btnAll = document.getElementById('btnGenerateAll');
-  btnSelected.disabled = true;
-  btnAll.disabled = true;
+  setGenerateButtonsDisabled(true);
   clearGenerateResults();
-  showStatus(t('正在生成封面，请稍候...', 'Generating covers, please wait...'), 'info');
+  showStatus(t('正在提交生成任务...', 'Submitting generation job...'), 'info');
   try{
     const response = await fetch('/api/libraries/generate', {
       method: 'POST',
@@ -1576,18 +1576,61 @@ async function generateLibraries(ids){
     });
     const data = await response.json();
     if(!data.ok)throw new Error(data.message || t('生成失败', 'Generation failed'));
-    document.getElementById('generateResults').innerHTML = (data.results || []).map(item=>`
-      <div class="result-item">
-        <strong>${escapeHtml(item.library)}</strong>
-        <span style="color:${item.ok ? 'var(--green)' : 'var(--red)'}">${item.ok ? '✓' : '✗'} ${escapeHtml(item.message)}</span>
-      </div>
-    `).join('');
-    showStatus(t('封面生成完成', 'Cover generation finished'), 'success');
+    showStatus(t('正在生成封面，请稍候...', 'Generating covers, please wait...'), 'info');
+    loadGenerationStatus();
   }catch(error){
     showStatus(tt('生成失败: {0}', 'Generation failed: {0}', error.message), 'error');
+    setGenerateButtonsDisabled(false);
+  }
+}
+
+let generationPollTimer = null;
+let generationPolling = false;
+
+function setGenerateButtonsDisabled(disabled){
+  document.getElementById('btnGenerateSelected').disabled = disabled;
+  document.getElementById('btnGenerateAll').disabled = disabled;
+}
+
+function renderGenerationResults(results){
+  document.getElementById('generateResults').innerHTML = (results || []).map(item=>`
+    <div class="result-item">
+      <strong>${escapeHtml(item.library)}</strong>
+      <span style="color:${item.ok ? 'var(--green)' : 'var(--red)'}">${item.ok ? '✓' : '✗'} ${escapeHtml(item.message)}</span>
+    </div>
+  `).join('');
+}
+
+async function loadGenerationStatus(){
+  if(generationPolling)return;
+  generationPolling = true;
+  try{
+    const response = await fetch('/api/generation/status');
+    const data = await response.json();
+    if(!data || !data.status || data.status === 'idle'){
+      setGenerateButtonsDisabled(false);
+      return;
+    }
+    if(data.status === 'running'){
+      setGenerateButtonsDisabled(true);
+      const progress = data.total ? ` (${data.done}/${data.total})` : '';
+      showStatus(tt('正在生成封面{0}：{1}', 'Generating covers{0}: {1}', progress, data.current_library || '...'), 'info');
+      renderGenerationResults(data.results || []);
+      if(generationPollTimer)clearTimeout(generationPollTimer);
+      generationPollTimer = setTimeout(loadGenerationStatus, 1000);
+      return;
+    }
+    setGenerateButtonsDisabled(false);
+    renderGenerationResults(data.results || []);
+    if(data.status === 'completed'){
+      showStatus(t('封面生成完成', 'Cover generation finished'), 'success');
+    }else{
+      showStatus(data.message ? tt('生成失败: {0}', 'Generation failed: {0}', data.message) : t('生成失败', 'Generation failed'), 'error');
+    }
+  }catch(error){
+    setGenerateButtonsDisabled(false);
   }finally{
-    btnSelected.disabled = false;
-    btnAll.disabled = false;
+    generationPolling = false;
   }
 }
 
