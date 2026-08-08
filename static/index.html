@@ -264,270 +264,6 @@ h3{font-weight:600}
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important;transition-duration:.01ms!important}
 }
-
-/* Unified glass workbench refresh. */
-:root{
-  --bg:#d6e2e1;
-  --surface:rgba(250,253,252,.58);
-  --surface-strong:rgba(255,255,255,.78);
-  --surface-subtle:rgba(242,248,247,.48);
-  --text:#162825;
-  --muted:#5a6e6a;
-  --line:rgba(255,255,255,.8);
-  --line-strong:rgba(12,105,96,.28);
-  --blue:#08756d;
-  --blue-soft:rgba(219,242,237,.78);
-  --green:#137453;
-  --green-soft:rgba(226,245,235,.78);
-  --red:#bc3f48;
-  --red-soft:rgba(251,232,235,.84);
-  --orange:#af5c3c;
-  --orange-soft:rgba(251,237,230,.84);
-  --shadow:0 22px 50px rgba(36,61,58,.14),0 1px 0 rgba(255,255,255,.84) inset;
-  --shadow-soft:0 10px 28px rgba(36,61,58,.1),0 1px 0 rgba(255,255,255,.78) inset;
-  --glass-glow:0 0 0 1px rgba(255,255,255,.3) inset;
-  --glass-card:var(--surface);
-  --glass-soft:var(--surface-subtle);
-  --glass-strong:var(--surface-strong);
-  --glass-input:rgba(255,255,255,.64);
-  --glass-border:var(--line);
-  --glass-divider:rgba(255,255,255,.56);
-}
-html{background:var(--bg)}
-body{
-  min-width:320px;
-  background:linear-gradient(128deg,#c7dfdc 0%,#dbe5ed 51%,#e6d9d5 100%);
-  letter-spacing:0;
-}
-body::before{
-  background:linear-gradient(128deg,rgba(222,244,238,.56),rgba(235,241,248,.48) 51%,rgba(247,229,224,.5)),var(--bing-wallpaper) center / cover no-repeat;
-  opacity:.48;
-  filter:saturate(.88) contrast(1.04);
-}
-body::after{
-  content:"";
-  position:fixed;
-  inset:0;
-  z-index:0;
-  pointer-events:none;
-  background-image:linear-gradient(rgba(255,255,255,.16) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.16) 1px,transparent 1px);
-  background-size:28px 28px;
-  opacity:.32;
-}
-.container{max-width:1360px;padding:28px 28px 56px}
-.app-header{
-  align-items:center;
-  padding:18px 20px;
-  margin-bottom:14px;
-  border:1px solid var(--glass-border);
-  border-radius:20px;
-  background:rgba(250,253,252,.5);
-  box-shadow:var(--shadow-soft),var(--glass-glow);
-  backdrop-filter:blur(22px) saturate(125%);
-  -webkit-backdrop-filter:blur(22px) saturate(125%);
-}
-.brand-lockup{gap:14px}
-.brand-mark{width:46px;height:46px;flex-basis:46px;border-radius:15px;border:1px solid rgba(255,255,255,.7);box-shadow:0 8px 20px rgba(28,60,55,.18)}
-h1{font-size:30px}
-.page-subtitle{font-size:13px}
-.app-version{border-color:rgba(72,97,92,.22)}
-.app-context{background:rgba(255,255,255,.42);box-shadow:0 4px 14px rgba(36,61,58,.08),var(--glass-glow)}
-.app-context-dot{box-shadow:0 0 0 4px rgba(19,116,83,.12)}
-.top-tabs{
-  width:100%;
-  margin-bottom:26px;
-  padding:6px;
-  border-radius:18px;
-  background:rgba(242,248,247,.52);
-  box-shadow:var(--shadow-soft),var(--glass-glow);
-  backdrop-filter:blur(20px) saturate(125%);
-  -webkit-backdrop-filter:blur(20px) saturate(125%);
-}
-.tab-indicator{top:6px;bottom:6px;border-color:rgba(255,255,255,.88);border-radius:13px;background:rgba(255,255,255,.76);box-shadow:0 7px 18px rgba(36,61,58,.13),0 1px 0 rgba(255,255,255,.9) inset}
-.tab-btn,.sub-tab-btn{font-weight:600}
-.tab-btn{flex:1;text-align:center}
-.tab-btn:hover,.sub-tab-btn:hover{background:rgba(255,255,255,.44);color:var(--text)}
-.tab-btn.active{color:var(--blue)}
-.sub-tabs{padding:6px;border-radius:17px;background:rgba(242,248,247,.54)}
-.sub-tab-indicator{top:6px;bottom:6px;border-radius:12px;background:rgba(255,252,250,.82)}
-.tab-btn:focus-visible,.sub-tab-btn:focus-visible,.btn:focus-visible,.lang-toggle:focus-visible,.style-card:focus-visible,.overview-range-btn:focus-visible{outline:2px solid rgba(8,117,109,.72);outline-offset:3px}
-
-.overview-toolbar{
-  align-items:center;
-  padding:20px;
-  margin:0 0 16px;
-  border:1px solid var(--glass-border);
-  border-radius:20px;
-  background:rgba(250,253,252,.45);
-  box-shadow:var(--shadow-soft),var(--glass-glow);
-  backdrop-filter:blur(18px) saturate(120%);
-  -webkit-backdrop-filter:blur(18px) saturate(120%);
-}
-.eyebrow{display:flex;align-items:center;gap:7px;color:var(--blue);letter-spacing:0}
-.eyebrow::before{content:"";width:18px;height:2px;border-radius:999px;background:currentColor}
-.overview-title{font-size:27px}
-.overview-metrics{gap:14px}
-.metric-card{
-  position:relative;
-  min-height:132px;
-  overflow:hidden;
-  border-color:rgba(255,255,255,.8);
-  background:rgba(250,253,252,.5);
-  box-shadow:var(--shadow-soft),var(--glass-glow);
-  transition:border-color .22s ease,box-shadow .22s ease,transform .22s ease;
-}
-.metric-card:hover{transform:translateY(-2px);border-color:rgba(8,117,109,.28);box-shadow:var(--shadow),var(--glass-glow)}
-.metric-card::after{content:"";position:absolute;inset:auto 0 0;height:3px;background:rgba(8,117,109,.28)}
-.metric-card.is-highlight{border-color:rgba(8,117,109,.31);background:rgba(241,252,249,.66)}
-.metric-card.is-highlight::after{background:var(--blue)}
-.metric-value{font-size:34px}
-.overview-chart-panel,.overview-recent-panel{
-  overflow:hidden;
-  border-color:rgba(255,255,255,.8);
-  background:rgba(250,253,252,.5);
-}
-.panel-heading{padding:19px 20px;border-color:var(--glass-divider)}
-.overview-range-tabs{background:rgba(255,255,255,.36);border-color:rgba(255,255,255,.7)}
-.overview-range-btn.active{background:rgba(255,255,255,.82);color:var(--blue);box-shadow:0 4px 10px rgba(36,61,58,.12),0 1px 0 rgba(255,255,255,.86) inset}
-.import-bar{background:linear-gradient(180deg,#19958a 0%,#086c65 100%)}
-.import-column:hover .import-bar{background:linear-gradient(180deg,#11776f 0%,#075c56 100%)}
-.overview-poster{border-radius:8px;transition:transform .22s ease,box-shadow .22s ease,border-color .22s ease}
-.overview-poster:hover{transform:translateY(-2px);border-color:rgba(8,117,109,.42);box-shadow:0 10px 18px rgba(36,61,58,.16)}
-
-.card{
-  position:relative;
-  overflow:hidden;
-  border-color:rgba(255,255,255,.82);
-  background:rgba(250,253,252,.52);
-  box-shadow:var(--shadow),var(--glass-glow);
-  backdrop-filter:blur(20px) saturate(125%);
-  -webkit-backdrop-filter:blur(20px) saturate(125%);
-}
-.card::before{content:"";position:absolute;inset:0 0 auto;height:1px;background:rgba(255,255,255,.86);pointer-events:none}
-.card h2{font-size:19px}
-.form-group label{font-weight:600}
-.form-group input,.form-group select,.form-group textarea{
-  border-color:rgba(255,255,255,.78);
-  background:rgba(255,255,255,.55);
-  box-shadow:0 1px 0 rgba(255,255,255,.8) inset,0 1px 2px rgba(36,61,58,.04);
-  transition:border-color .2s ease,box-shadow .2s ease,background .2s ease,transform .2s ease;
-}
-.form-group input:hover,.form-group select:hover,.form-group textarea:hover{border-color:rgba(8,117,109,.34);background:rgba(255,255,255,.7)}
-.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:rgba(8,117,109,.66);background:rgba(255,255,255,.88);box-shadow:0 0 0 4px rgba(8,117,109,.13),0 5px 14px rgba(8,117,109,.09),0 1px 0 rgba(255,255,255,.86) inset}
-.empty-note{background:rgba(242,248,247,.54);border-color:rgba(8,117,109,.3)}
-.settings-section,.notify-section{border-color:rgba(255,255,255,.74);background:rgba(242,248,247,.44);box-shadow:0 1px 0 rgba(255,255,255,.78) inset,0 8px 18px rgba(36,61,58,.045)}
-.status-bar{border-color:rgba(255,255,255,.76);box-shadow:0 1px 0 rgba(255,255,255,.76) inset,0 6px 14px rgba(36,61,58,.055)}
-.inline-code{background:rgba(242,248,247,.62);border-color:rgba(255,255,255,.8)}
-
-.toggle-row input,.checkbox-item input,.library-pick input{
-  appearance:none;
-  -webkit-appearance:none;
-  position:relative;
-  flex:0 0 19px;
-  width:19px;
-  height:19px;
-  margin:1px 0 0;
-  border:1px solid rgba(8,117,109,.34);
-  border-radius:6px;
-  background:rgba(255,255,255,.7);
-  box-shadow:0 1px 0 rgba(255,255,255,.8) inset;
-  cursor:pointer;
-  transition:background .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease;
-}
-.toggle-row input::after,.checkbox-item input::after,.library-pick input::after{
-  content:"";
-  position:absolute;
-  top:3px;
-  left:6px;
-  width:4px;
-  height:8px;
-  border:solid #fff;
-  border-width:0 2px 2px 0;
-  opacity:0;
-  transform:rotate(45deg) scale(.72);
-  transition:opacity .16s ease,transform .16s ease;
-}
-.toggle-row input:checked,.checkbox-item input:checked,.library-pick input:checked{border-color:var(--blue);background:var(--blue);box-shadow:0 3px 8px rgba(8,117,109,.28)}
-.toggle-row input:checked::after,.checkbox-item input:checked::after,.library-pick input:checked::after{opacity:1;transform:rotate(45deg) scale(1)}
-.toggle-row input:focus-visible,.checkbox-item input:focus-visible,.library-pick input:focus-visible{outline:2px solid rgba(8,117,109,.65);outline-offset:2px}
-.checkbox-item,.library-pick{
-  position:relative;
-  overflow:hidden;
-  isolation:isolate;
-  border-color:rgba(255,255,255,.76);
-  background:rgba(255,255,255,.42);
-  transition:background .2s ease,border-color .2s ease,box-shadow .2s ease,transform .2s ease;
-}
-.checkbox-item:hover,.library-pick:hover{border-color:rgba(8,117,109,.38);background:rgba(255,255,255,.68);box-shadow:0 8px 16px rgba(36,61,58,.08),0 1px 0 rgba(255,255,255,.78) inset}
-.checkbox-item:has(input:checked),.library-pick:has(input:checked){border-color:rgba(8,117,109,.46);background:rgba(232,249,245,.7);box-shadow:0 0 0 1px rgba(8,117,109,.08) inset,0 8px 16px rgba(8,117,109,.07)}
-
-.btn,.lang-toggle,.style-card,.overview-range-btn,.tab-btn,.sub-tab-btn{
-  position:relative;
-  overflow:hidden;
-  isolation:isolate;
-  -webkit-tap-highlight-color:transparent;
-}
-.btn,.lang-toggle{min-height:42px}
-.btn{font-weight:600}
-.btn-primary{background:linear-gradient(135deg,#167f76 0%,#075e58 100%);box-shadow:0 9px 20px rgba(8,117,109,.25),0 1px 0 rgba(255,255,255,.25) inset}
-.btn-primary:hover{background:linear-gradient(135deg,#0d7169 0%,#064f4b 100%);box-shadow:0 12px 24px rgba(8,117,109,.3),0 1px 0 rgba(255,255,255,.25) inset}
-.btn-success{background:linear-gradient(135deg,#23815f 0%,#116447 100%);box-shadow:0 9px 20px rgba(19,116,83,.24),0 1px 0 rgba(255,255,255,.25) inset}
-.btn-success:hover{background:linear-gradient(135deg,#1d7457 0%,#0d573d 100%)}
-.btn-secondary{background:rgba(255,255,255,.54);border-color:rgba(255,255,255,.8)}
-.btn-secondary:hover{background:rgba(255,255,255,.78);border-color:rgba(8,117,109,.34)}
-.btn.is-pressed,.lang-toggle.is-pressed,.style-card.is-pressed,.overview-range-btn.is-pressed,.tab-btn.is-pressed,.sub-tab-btn.is-pressed,.checkbox-item.is-pressed,.library-pick.is-pressed{transform:translateY(1px) scale(.985)!important}
-.btn.is-busy{padding-left:39px;opacity:.86;cursor:wait}
-.btn.is-busy::before{content:"";position:absolute;left:16px;width:13px;height:13px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:button-spin .7s linear infinite}
-.btn.is-busy:disabled{opacity:.86}
-.btn:disabled:not(.is-busy){opacity:.5}
-.save-bar{position:sticky;bottom:16px;z-index:8;justify-content:flex-end;margin-top:14px;pointer-events:none}
-.save-bar .btn{pointer-events:auto;min-width:220px!important;box-shadow:0 14px 28px rgba(8,117,109,.28),0 1px 0 rgba(255,255,255,.25) inset}
-.style-card{
-  width:100%;
-  padding:10px;
-  color:var(--text);
-  font:inherit;
-  text-align:left;
-  border-color:rgba(255,255,255,.78);
-  background:rgba(255,255,255,.47);
-}
-.style-card:hover{border-color:rgba(8,117,109,.42);background:rgba(255,255,255,.72);box-shadow:var(--shadow),var(--glass-glow)}
-.style-card.active{border-color:rgba(8,117,109,.68);background:rgba(239,252,248,.74);box-shadow:0 0 0 2px rgba(8,117,109,.13),var(--shadow-soft),var(--glass-glow)}
-.style-card.active .title{color:var(--blue)}
-.style-card img{border:1px solid rgba(255,255,255,.6);box-shadow:0 6px 14px rgba(36,61,58,.1)}
-.ui-ripple{position:absolute;z-index:3;border-radius:50%;pointer-events:none;background:rgba(255,255,255,.52);transform:translate(-50%,-50%) scale(0);animation:click-ripple .56s cubic-bezier(.2,.72,.24,1) forwards}
-@keyframes click-ripple{to{transform:translate(-50%,-50%) scale(1);opacity:0}}
-@keyframes button-spin{to{transform:rotate(360deg)}}
-
-@media (max-width:900px){
-  .container{padding:22px 20px 48px}
-  .app-header{padding:16px 18px}
-  .top-tabs{margin-bottom:22px}
-}
-@media (max-width:560px){
-  .container{padding:16px 14px 38px}
-  .app-header{align-items:flex-start;padding:15px 14px;border-radius:18px}
-  .brand-lockup{gap:10px}
-  .brand-mark{width:40px;height:40px;flex-basis:40px;border-radius:13px}
-  h1{font-size:24px}
-  .page-subtitle{margin-top:3px;font-size:12px}
-  .app-header-actions{gap:6px}
-  .lang-toggle{min-width:42px;padding:8px 10px}
-  .top-tabs{width:100%;margin-bottom:18px;padding:5px;border-radius:16px}
-  .tab-btn{flex:0 0 auto;padding:9px 13px}
-  .overview-toolbar{padding:17px 16px;border-radius:18px}
-  .overview-title{font-size:23px}
-  .overview-metrics{gap:10px}
-  .metric-card{min-height:116px;padding:14px;border-radius:16px}
-  .metric-value{font-size:29px}
-  .card{border-radius:18px}
-  .save-bar{bottom:10px;margin-top:10px}
-  .save-bar .btn{width:100%;min-width:0!important}
-}
-@media (prefers-reduced-motion:reduce){
-  .ui-ripple,.btn.is-busy::before{animation:none!important}
-  .btn.is-busy::before{opacity:.7}
-}
 </style>
 </head>
 <body>
@@ -949,7 +685,7 @@ h1{font-size:30px}
   </section>
 
   <div id="saveBar" class="save-bar" hidden>
-    <button id="saveConfigButton" class="btn btn-primary" type="button" onclick="saveConfig()" style="min-width:220px">保存全部配置</button>
+    <button class="btn btn-primary" onclick="saveConfig()" style="min-width:220px">保存全部配置</button>
   </div>
 </div>
 
@@ -1497,7 +1233,6 @@ async function loadOverview(silent=false){
   state.overviewLoading = true;
   const refreshButton = document.getElementById('overviewRefresh');
   if(refreshButton)refreshButton.disabled = true;
-  if(refreshButton)refreshButton.classList.add('is-busy');
   try{
     const response = await fetch('/api/overview');
     if(!response.ok)throw new Error(t('统计接口不可用', 'Stats API unavailable'));
@@ -1513,10 +1248,7 @@ async function loadOverview(silent=false){
       state.overviewRefreshPending = false;
       loadOverview(true);
     }
-    if(refreshButton){
-      refreshButton.disabled = false;
-      refreshButton.classList.remove('is-busy');
-    }
+    if(refreshButton)refreshButton.disabled = false;
   }
 }
 
@@ -1525,51 +1257,6 @@ function showToast(message, type){
   el.textContent = message;
   el.className = `toast ${type} show`;
   setTimeout(()=>el.classList.remove('show'), 2600);
-}
-
-const CLICK_FEEDBACK_SELECTOR = 'button, .style-card, .checkbox-item, .library-pick, .upload-area, .overview-poster';
-
-function feedbackTarget(node){
-  return node instanceof Element ? node.closest(CLICK_FEEDBACK_SELECTOR) : null;
-}
-
-function createClickRipple(target, event){
-  if(!target || window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)return;
-  const rect = target.getBoundingClientRect();
-  if(!rect.width || !rect.height)return;
-  const ripple = document.createElement('span');
-  const size = Math.max(rect.width, rect.height) * 1.35;
-  const hasPointer = event && Number.isFinite(event.clientX) && Number.isFinite(event.clientY);
-  ripple.className = 'ui-ripple';
-  ripple.style.width = `${size}px`;
-  ripple.style.height = `${size}px`;
-  ripple.style.left = `${hasPointer ? event.clientX - rect.left : rect.width / 2}px`;
-  ripple.style.top = `${hasPointer ? event.clientY - rect.top : rect.height / 2}px`;
-  target.appendChild(ripple);
-  ripple.addEventListener('animationend', ()=>ripple.remove(), { once:true });
-}
-
-function initializeClickFeedback(){
-  document.addEventListener('pointerdown', (event)=>{
-    const target = feedbackTarget(event.target);
-    if(!target || target.matches('button:disabled'))return;
-    target.classList.add('is-pressed');
-    createClickRipple(target, event);
-  }, { passive:true });
-  const release = (event)=>{
-    const target = feedbackTarget(event.target);
-    if(target)target.classList.remove('is-pressed');
-  };
-  document.addEventListener('pointerup', release, { passive:true });
-  document.addEventListener('pointercancel', release, { passive:true });
-  document.addEventListener('keydown', (event)=>{
-    if(event.key !== 'Enter' && event.key !== ' ')return;
-    const target = feedbackTarget(document.activeElement);
-    if(!target || target.matches('button:disabled'))return;
-    target.classList.add('is-pressed');
-    createClickRipple(target);
-    window.setTimeout(()=>target.classList.remove('is-pressed'), 150);
-  });
 }
 
 function setInputValue(id, value){
@@ -1604,11 +1291,11 @@ function renderNotifyTypes(){
 function renderStyleCards(){
   const current = state.config.cover_style || 'single_1';
   document.getElementById('styleCards').innerHTML = styleOptions.map(style=>`
-    <button class="style-card ${style.value===current ? 'active' : ''}" type="button" aria-pressed="${style.value===current}" onclick="selectStyle('${style.value}')">
+    <div class="style-card ${style.value===current ? 'active' : ''}" onclick="selectStyle('${style.value}')">
       <img src="${style.image}" alt="${style.title}">
       <div class="title">${style.title}</div>
       <div class="desc">${style.desc}</div>
-    </button>
+    </div>
   `).join('');
 }
 
@@ -1821,11 +1508,6 @@ function collectConfigPayload(){
 }
 
 async function saveConfig(silent=false){
-  const saveButton = silent ? null : document.getElementById('saveConfigButton');
-  if(saveButton){
-    saveButton.disabled = true;
-    saveButton.classList.add('is-busy');
-  }
   try{
     const payload = collectConfigPayload();
     const response = await fetch('/api/config', {
@@ -1845,11 +1527,6 @@ async function saveConfig(silent=false){
   }catch(error){
     if(!silent)showToast(tt('保存失败: {0}', 'Save failed: {0}', error.message), 'error');
     return false;
-  }finally{
-    if(saveButton){
-      saveButton.disabled = false;
-      saveButton.classList.remove('is-busy');
-    }
   }
 }
 
@@ -1911,12 +1588,8 @@ let generationPollTimer = null;
 let generationPolling = false;
 
 function setGenerateButtonsDisabled(disabled){
-  ['btnGenerateSelected', 'btnGenerateAll'].forEach((id)=>{
-    const button = document.getElementById(id);
-    if(!button)return;
-    button.disabled = disabled;
-    button.classList.toggle('is-busy', disabled);
-  });
+  document.getElementById('btnGenerateSelected').disabled = disabled;
+  document.getElementById('btnGenerateAll').disabled = disabled;
 }
 
 function renderGenerationResults(results){
@@ -2204,7 +1877,6 @@ async function loadAppVersion(){
 }
 
 async function initialize(){
-  initializeClickFeedback();
   initializeTabNavigation();
   syncOverviewRangeButtons();
   showWebhookUrl();
